@@ -165,7 +165,7 @@ export default function ReadToLeadApp() {
           <button onClick={generateQuestions}>
             Generate Questions
           </button>
-
+          <p>Questions loaded: {JSON.stringify(questions)}</p>
           {Array.isArray(questions) && questions.map((q, i) => (
             <p key={i}>• {q}</p>
           ))}
