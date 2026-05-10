@@ -166,7 +166,7 @@ export default function ReadToLeadApp() {
             Generate Questions
           </button>
 
-          {questions.map((q, i) => (
+          {Array.isArray(questions) && questions.map((q, i) => (
             <p key={i}>• {q}</p>
           ))}
 
