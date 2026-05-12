@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 export default function ReadToLeadApp() {
 
@@ -9,102 +9,14 @@ export default function ReadToLeadApp() {
 
   const [title, setTitle] = useState("");
   const [level, setLevel] = useState("");
-  const [summary, setSummary] = useState("");
-  const [inference, setInference] = useState("");
-  const [reflection, setReflection] = useState("");
+
   const generateQuestions = async () => {
-  try {
-    const res = await fetch("/api/generate-questions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ title }),
-    });
+    try {
+      const res = await fetch("/api/generate-questions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ title }),
+      });
 
-    const data = await res.json();
-
-    setQuestions(data.questions || []);
-    setAnswers(new Array(data.questions.length).fill(""));
-
-  } catch (error) {
-    console.error(error);
-    alert("Error generating questions");
-  }
-};
-
-  return (
-    <div style={{
-      padding: 20,
-      fontFamily: "Arial",
-      maxWidth: 600,
-      margin: "auto"
-    }}>
-
-      <h1 style={{ textAlign: "center" }}>📚 Read to Lead</h1>
-
-      <h3>Welcome {user.name} ({user.role})</h3>
-
-      <div style={{ marginBottom: 20 }}>
-        <button onClick={() => setView("student")}>Student</button>
-        <button onClick={() => setView("teacher")}>Teacher</button>
-        <button onClick={() => setView("leaderboard")}>Leaderboard</button>
-      </div>
-
-      {view === "student" && user.role === "student" && (
-        <div>
-          <h2>Log a Book</h2>
-
-          <input
-            placeholder="Book title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-
-          <br /><br />
-
-          <select
-            value={level}
-            onChange={(e) => setLevel(e.target.value)}
-          >
-            <option value="">Select level</option>
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
-          </select>
-
-          <br /><br />
-
-          
-          <button onClick={generateQuestions} style={mainBtn}>
-              Generate Questions
-          </button>
-
-
-          {/* QUESTIONS + ANSWERS */}
-          {questions.map((q, i) => (
-            <div key={i} style={{ marginTop: 10 }}>
-              <p><strong>Question {i + 1}:</strong></p>
-              <p>{q}</p>
-
-              <textarea
-                placeholder="Write your answer..."
-                value={answers[i] || ""}
-                onChange={(e) => {
-                  const newAnswers = [...answers];
-                  newAnswers[i] = e.target.value;
-                  setAnswers(newAnswers);
-                }}
-              />
-            </div>
-          ))}
-
-          <br />
-
-          <button>Submit Book</button>
-        </div>
-      )}
-
-    </div>
-  );
-}
