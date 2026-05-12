@@ -1,4 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// ✅ connect to Supabase
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 export default function ReadToLeadApp() {
 
@@ -19,8 +26,24 @@ export default function ReadToLeadApp() {
     const role = name.toLowerCase().includes("teacher")
       ? "teacher"
       : "student";
-
     setUser({ name, role });
+  };
+
+  // ✅ LOAD ALL DATA FROM DATABASE
+  useEffect(() => {
+    fetchSubmissions();
+  }, []);
+
+  const fetchSubmissions = async () => {
+    const { data, error } = await supabase
+      .from("submissions")
+      .select("*");
+
+    if (error) {
+      console.error(error);
+    } else {
+      setSubmissions(data || []);
+    }
   };
 
   // ✅ GENERATE QUESTIONS
@@ -59,41 +82,55 @@ export default function ReadToLeadApp() {
     setAiFeedback(newFeedback);
   };
 
-  // ✅ SUBMIT BOOK
-  const addBook = () => {
-    const newSubmission = {
-      id: Date.now(),
-      student: user.name,
-      title,
-      level,
-      questions,
-      answers,
-      aiFeedback,
-      status: "pending",
-      points: 0
-    };
+  // ✅ SAVE SUBMISSION TO DATABASE
+  const addBook = async () => {
+    const { error } = await supabase
+      .from("submissions")
+      .insert([
+        {
+          student: user.name,
+          title,
+          level,
+          questions,
+          answers,
+          ai_feedback: aiFeedback,
+          status: "pending",
+          points: 0
+        }
+      ]);
 
-    setSubmissions([...submissions, newSubmission]);
-    alert("✅ Submitted for teacher review!");
+    if (error) {
+      console.error(error);
+      alert("Error saving data");
+    } else {
+      alert("✅ Submitted to teacher!");
+      fetchSubmissions(); // refresh
+    }
   };
 
-  // ✅ TEACHER APPROVES WITH SCORE
-  const approveSubmission = (id, level) => {
-    const updated = submissions.map((s) => {
-      if (s.id === id) {
-        const base = s.level === "easy" ? 2 : s.level === "medium" ? 5 : 10;
-        const multiplier = level === "mastery" ? 2 : level === "secure" ? 1.5 : 1;
-        return {
-          ...s,
-          status: "approved",
-          points: Math.round(base * multiplier),
-          teacherLevel: level
-        };
-      }
-      return s;
-    });
+  // ✅ TEACHER APPROVES + SAVES POINTS
+  const approveSubmission = async (id, teacherLevel, bookLevel) => {
 
-    setSubmissions(updated);
+    const base = bookLevel === "easy" ? 2 : bookLevel === "medium" ? 5 : 10;
+    const multiplier = teacherLevel === "mastery" ? 2 :
+                       teacherLevel === "secure" ? 1.5 : 1;
+
+    const points = Math.round(base * multiplier);
+
+    const { error } = await supabase
+      .from("submissions")
+      .update({
+        status: "approved",
+        teacher_level: teacherLevel,
+        points: points
+      })
+      .eq("id", id);
+
+    if (error) {
+      console.error(error);
+    } else {
+      fetchSubmissions();
+    }
   };
 
   // ✅ LEADERBOARD
@@ -132,7 +169,7 @@ export default function ReadToLeadApp() {
       <button onClick={() => setView("teacher")}>Teacher</button>
       <button onClick={() => setView("leaderboard")}>Leaderboard</button>
 
-      {/* STUDENT */}
+      {/* STUDENT VIEW */}
       {view === "student" && user.role === "student" && (
         <div>
           <input
@@ -151,7 +188,7 @@ export default function ReadToLeadApp() {
           <button onClick={generateQuestions}>Generate Questions</button>
 
           {questions.map((q, i) => (
-            <div key={i}>
+            <div key={i} style={{ marginTop: 10 }}>
               <p>{q}</p>
 
               <textarea
@@ -175,7 +212,7 @@ export default function ReadToLeadApp() {
         </div>
       )}
 
-      {/* TEACHER */}
+      {/* TEACHER VIEW */}
       {view === "teacher" && user.role === "teacher" && (
         <div>
           <h2>Teacher Dashboard</h2>
@@ -184,19 +221,19 @@ export default function ReadToLeadApp() {
             <div key={s.id} style={{ border: "1px solid black", margin: 10 }}>
               <p><strong>{s.student}</strong> - {s.title}</p>
 
-              {s.questions.map((q, i) => (
+              {s.questions?.map((q, i) => (
                 <div key={i}>
                   <p>{q}</p>
-                  <p>{s.answers[i]}</p>
-                  <p>{s.aiFeedback[i]}</p>
+                  <p><strong>Answer:</strong> {s.answers[i]}</p>
+                  <p>{s.ai_feedback[i]}</p>
                 </div>
               ))}
 
               {s.status === "pending" && (
                 <div>
-                  <button onClick={() => approveSubmission(s.id, "emerging")}>Emerging</button>
-                  <button onClick={() => approveSubmission(s.id, "secure")}>Secure</button>
-                  <button onClick={() => approveSubmission(s.id, "mastery")}>Mastery</button>
+                  <button onClick={() => approveSubmission(s.id, "emerging", s.level)}>Emerging</button>
+                  <button onClick={() => approveSubmission(s.id, "secure", s.level)}>Secure</button>
+                  <button onClick={() => approveSubmission(s.id, "mastery", s.level)}>Mastery</button>
                 </div>
               )}
 
