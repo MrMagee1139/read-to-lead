@@ -29,10 +29,16 @@ export default async function handler(req, res) {
         },
         {
           role: "user",
-          content: `Create 3 simple comprehension questions about the book "${title}". Include:
-          - one WHAT question
-          - one WHY question
-          - one lesson question`
+          content: `Create exactly 3 comprehension questions about the book "${title}".
+
+Rules:
+- Do NOT include any introduction or explanation
+- Do NOT number the questions
+- Each question should be on a new line
+- Keep language simple for KS2 students
+- Include one WHAT, one WHY, and one lesson question
+
+Output ONLY the 3 questions.`
         }
       ]
     });
@@ -41,7 +47,8 @@ export default async function handler(req, res) {
 
     const questions = text
       .split("\n")
-      .filter(q => q.trim() !== "");
+      .map(q => q.replace(/^\d+[.)\s]*/, "").trim())
+      .filter(q => q !== "");
 
     res.status(200).json({ questions });
 
