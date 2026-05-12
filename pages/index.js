@@ -2,15 +2,25 @@ import { useState } from "react";
 
 export default function ReadToLeadApp() {
 
-  const [answers, setAnswers] = useState([]);
-  const [questions, setQuestions] = useState([]);
-  const [user] = useState({ name: "Andrew", role: "student" });
+  const [user, setUser] = useState(null);
   const [view, setView] = useState("student");
 
   const [title, setTitle] = useState("");
   const [level, setLevel] = useState("");
 
-  // ✅ FIXED function
+  const [questions, setQuestions] = useState([]);
+  const [answers, setAnswers] = useState([]);
+
+  // ✅ LOGIN
+  const login = (name) => {
+    const role = name.toLowerCase().includes("teacher")
+      ? "teacher"
+      : "student";
+
+    setUser({ name, role });
+  };
+
+  // ✅ GENERATE QUESTIONS
   const generateQuestions = async () => {
     try {
       const res = await fetch("/api/generate-questions", {
@@ -23,86 +33,15 @@ export default function ReadToLeadApp() {
 
       const data = await res.json();
 
-      setQuestions(data.questions || []);
-      setAnswers(new Array((data.questions || []).length).fill(""));
+      const qs = data.questions || [];
+
+      setQuestions(qs);
+      setAnswers(new Array(qs.length).fill(""));
 
     } catch (error) {
       console.error(error);
       alert("Error generating questions");
     }
-  }; // ✅ IMPORTANT: this closing bracket was likely missing
+  };
 
-  return (
-    <div style={{
-      padding: 20,
-      fontFamily: "Arial",
-      maxWidth: 600,
-      margin: "auto"
-    }}>
-
-      <h1 style={{ textAlign: "center" }}>📚 Read to Lead</h1>
-
-      <h3>Welcome {user.name} ({user.role})</h3>
-
-      <div style={{ marginBottom: 20 }}>
-        <button onClick={() => setView("student")}>Student</button>
-        <button onClick={() => setView("teacher")}>Teacher</button>
-        <button onClick={() => setView("leaderboard")}>Leaderboard</button>
-      </div>
-
-      {view === "student" && user.role === "student" && (
-        <div>
-          <h2>Log a Book</h2>
-
-          <input
-            placeholder="Book title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-
-          <br /><br />
-
-          <select
-            value={level}
-            onChange={(e) => setLevel(e.target.value)}
-          >
-            <option value="">Select level</option>
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
-          </select>
-
-          <br /><br />
-
-          <button onClick={generateQuestions}>
-            Generate Questions
-          </button>
-
-          {/* QUESTIONS + ANSWERS */}
-          {questions.map((q, i) => (
-            <div key={i} style={{ marginTop: 10 }}>
-              <p><strong>Question {i + 1}:</strong></p>
-              <p>{q}</p>
-
-              <textarea
-                placeholder="Write your answer..."
-                value={answers[i] || ""}
-                onChange={(e) => {
-                  const newAnswers = [...answers];
-                  newAnswers[i] = e.target.value;
-                  setAnswers(newAnswers);
-                }}
-              />
-            </div>
-          ))}
-
-          <br />
-
-          <button>Submit Book</button>
-        </div>
-      )}
-
-    </div>
-  );
-}
-``
+  // ✅ SUBMIT BOOK
