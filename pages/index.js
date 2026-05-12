@@ -45,3 +45,116 @@ export default function ReadToLeadApp() {
   };
 
   // ✅ SUBMIT BOOK
+  const addBook = () => {
+    const newBook = {
+      student: user.name,
+      title,
+      level,
+      questions,
+      answers
+    };
+
+    console.log("Submitted:", newBook);
+
+    alert(`✅ Well done ${user.name}! Your answers were submitted.`);
+  };
+
+  // ✅ LOGIN SCREEN
+  if (!user) {
+    return (
+      <div style={{ padding: 20 }}>
+        <h2>Login</h2>
+        <input
+          placeholder="Enter your name (add 'teacher' if needed)"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              login(e.target.value);
+            }
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      padding: 20,
+      fontFamily: "Arial",
+      maxWidth: 600,
+      margin: "auto"
+    }}>
+      <h1 style={{ textAlign: "center" }}>📚 Read to Lead</h1>
+
+      <h3>Welcome {user.name} ({user.role})</h3>
+
+      <div style={{ marginBottom: 20 }}>
+        <button onClick={() => setView("student")}>Student</button>
+        <button onClick={() => setView("teacher")}>Teacher</button>
+        <button onClick={() => setView("leaderboard")}>Leaderboard</button>
+      </div>
+
+      {/* STUDENT VIEW */}
+      {view === "student" && user.role === "student" && (
+        <div>
+          <h2>Log a Book</h2>
+
+          <input
+            placeholder="Book title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+
+          <br /><br />
+
+          <select
+            value={level}
+            onChange={(e) => setLevel(e.target.value)}
+          >
+            <option value="">Select level</option>
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+
+          <br /><br />
+
+          <button onClick={generateQuestions}>
+            Generate Questions
+          </button>
+
+          {/* QUESTIONS + ANSWERS */}
+          {questions.map((q, i) => (
+            <div key={i} style={{
+              marginTop: 10,
+              padding: 10,
+              border: "1px solid #ccc",
+              borderRadius: 6
+            }}>
+              <p><strong>Question {i + 1}:</strong></p>
+              <p>{q}</p>
+
+              <textarea
+                placeholder="Write your answer..."
+                value={answers[i] || ""}
+                onChange={(e) => {
+                  const newAnswers = [...answers];
+                  newAnswers[i] = e.target.value;
+                  setAnswers(newAnswers);
+                }}
+                style={{ width: "100%", height: 80 }}
+              />
+            </div>
+          ))}
+
+          <br />
+
+          <button onClick={addBook}>
+            Submit Book
+          </button>
+        </div>
+      )}
+
+    </div>
+  );
+}
+``
