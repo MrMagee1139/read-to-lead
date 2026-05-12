@@ -12,6 +12,8 @@ export default function ReadToLeadApp() {
   const [answers, setAnswers] = useState([]);
   const [aiFeedback, setAiFeedback] = useState([]);
 
+  const [submissions, setSubmissions] = useState([]);
+
   // ✅ LOGIN
   const login = (name) => {
     const role = name.toLowerCase().includes("teacher")
@@ -23,68 +25,88 @@ export default function ReadToLeadApp() {
 
   // ✅ GENERATE QUESTIONS
   const generateQuestions = async () => {
-    try {
-      const res = await fetch("/api/generate-questions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ title })
-      });
+    const res = await fetch("/api/generate-questions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ title })
+    });
 
-      const data = await res.json();
+    const data = await res.json();
+    const qs = data.questions || [];
 
-      const qs = data.questions || [];
-
-      setQuestions(qs);
-      setAnswers(new Array(qs.length).fill(""));
-      setAiFeedback(new Array(qs.length).fill(""));
-
-    } catch (error) {
-      console.error(error);
-      alert("Error generating questions");
-    }
+    setQuestions(qs);
+    setAnswers(new Array(qs.length).fill(""));
+    setAiFeedback(new Array(qs.length).fill(""));
   };
 
   // ✅ AI MARKING
   const markAnswer = async (question, answer, index) => {
-    try {
-      const res = await fetch("/api/mark-answer", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ question, answer })
-      });
+    const res = await fetch("/api/mark-answer", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ question, answer })
+    });
 
-      const data = await res.json();
+    const data = await res.json();
 
-      const newFeedback = [...aiFeedback];
-      newFeedback[index] = data.result;
+    const newFeedback = [...aiFeedback];
+    newFeedback[index] = data.result;
 
-      setAiFeedback(newFeedback);
-
-    } catch (error) {
-      console.error(error);
-      alert("Error checking answer");
-    }
+    setAiFeedback(newFeedback);
   };
 
   // ✅ SUBMIT BOOK
   const addBook = () => {
-    const newBook = {
+    const newSubmission = {
+      id: Date.now(),
       student: user.name,
       title,
       level,
       questions,
       answers,
-      aiFeedback
+      aiFeedback,
+      status: "pending",
+      points: 0
     };
 
-    console.log("Submitted:", newBook);
-
-    alert(`✅ Well done ${user.name}! Your answers were submitted.`);
+    setSubmissions([...submissions, newSubmission]);
+    alert("✅ Submitted for teacher review!");
   };
+
+  // ✅ TEACHER APPROVES WITH SCORE
+  const approveSubmission = (id, level) => {
+    const updated = submissions.map((s) => {
+      if (s.id === id) {
+        const base = s.level === "easy" ? 2 : s.level === "medium" ? 5 : 10;
+        const multiplier = level === "mastery" ? 2 : level === "secure" ? 1.5 : 1;
+        return {
+          ...s,
+          status: "approved",
+          points: Math.round(base * multiplier),
+          teacherLevel: level
+        };
+      }
+      return s;
+    });
+
+    setSubmissions(updated);
+  };
+
+  // ✅ LEADERBOARD
+  const scores = {};
+  submissions.forEach((s) => {
+    if (s.status === "approved") {
+      scores[s.student] = (scores[s.student] || 0) + s.points;
+    }
+  });
+
+  const leaderboard = Object.entries(scores)
+    .map(([name, pts]) => ({ name, pts }))
+    .sort((a, b) => b.pts - a.pts);
 
   // ✅ LOGIN SCREEN
   if (!user) {
@@ -92,11 +114,9 @@ export default function ReadToLeadApp() {
       <div style={{ padding: 20 }}>
         <h2>Login</h2>
         <input
-          placeholder="Enter your name (add 'teacher' if needed)"
+          placeholder="Enter name (add 'teacher')"
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              login(e.target.value);
-            }
+            if (e.key === "Enter") login(e.target.value);
           }}
         />
       </div>
@@ -104,100 +124,97 @@ export default function ReadToLeadApp() {
   }
 
   return (
-    <div style={{
-      padding: 20,
-      fontFamily: "Arial",
-      maxWidth: 600,
-      margin: "auto"
-    }}>
-      <h1 style={{ textAlign: "center" }}>📚 Read to Lead</h1>
+    <div style={{ padding: 20, maxWidth: 700, margin: "auto" }}>
+      <h1>📚 Read to Lead</h1>
+      <h3>{user.name} ({user.role})</h3>
 
-      <h3>Welcome {user.name} ({user.role})</h3>
+      <button onClick={() => setView("student")}>Student</button>
+      <button onClick={() => setView("teacher")}>Teacher</button>
+      <button onClick={() => setView("leaderboard")}>Leaderboard</button>
 
-      <div style={{ marginBottom: 20 }}>
-        <button onClick={() => setView("student")}>Student</button>
-        <button onClick={() => setView("teacher")}>Teacher</button>
-        <button onClick={() => setView("leaderboard")}>Leaderboard</button>
-      </div>
-
-      {/* STUDENT VIEW */}
+      {/* STUDENT */}
       {view === "student" && user.role === "student" && (
         <div>
-          <h2>Log a Book</h2>
-
           <input
             placeholder="Book title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
 
-          <br /><br />
-
-          <select
-            value={level}
-            onChange={(e) => setLevel(e.target.value)}
-          >
-            <option value="">Select level</option>
+          <select onChange={(e) => setLevel(e.target.value)}>
+            <option value="">Level</option>
             <option value="easy">Easy</option>
             <option value="medium">Medium</option>
             <option value="hard">Hard</option>
           </select>
 
-          <br /><br />
+          <button onClick={generateQuestions}>Generate Questions</button>
 
-          <button onClick={generateQuestions}>
-            Generate Questions
-          </button>
-
-          {/* QUESTIONS + ANSWERS */}
           {questions.map((q, i) => (
-            <div key={i} style={{
-              marginTop: 10,
-              padding: 10,
-              border: "1px solid #ccc",
-              borderRadius: 6
-            }}>
-              <p><strong>Question {i + 1}:</strong></p>
+            <div key={i}>
               <p>{q}</p>
 
               <textarea
-                placeholder="Write your answer..."
                 value={answers[i] || ""}
                 onChange={(e) => {
-                  const newAnswers = [...answers];
-                  newAnswers[i] = e.target.value;
-                  setAnswers(newAnswers);
+                  const a = [...answers];
+                  a[i] = e.target.value;
+                  setAnswers(a);
                 }}
-                style={{ width: "100%", height: 80 }}
               />
 
-              {/* ✅ AI MARKING */}
-              <button
-                onClick={() => markAnswer(q, answers[i], i)}
-                style={{ marginTop: 5 }}
-              >
+              <button onClick={() => markAnswer(q, answers[i], i)}>
                 Check Answer
               </button>
 
-              {/* ✅ FEEDBACK */}
-              {aiFeedback[i] && (
-                <div style={{
-                  marginTop: 8,
-                  padding: 8,
-                  background: "#f0f8ff",
-                  borderRadius: 5
-                }}>
-                  {aiFeedback[i]}
-                </div>
-              )}
+              <div>{aiFeedback[i]}</div>
             </div>
           ))}
 
-          <br />
+          <button onClick={addBook}>Submit</button>
+        </div>
+      )}
 
-          <button onClick={addBook}>
-            Submit Book
-          </button>
+      {/* TEACHER */}
+      {view === "teacher" && user.role === "teacher" && (
+        <div>
+          <h2>Teacher Dashboard</h2>
+
+          {submissions.map((s) => (
+            <div key={s.id} style={{ border: "1px solid black", margin: 10 }}>
+              <p><strong>{s.student}</strong> - {s.title}</p>
+
+              {s.questions.map((q, i) => (
+                <div key={i}>
+                  <p>{q}</p>
+                  <p>{s.answers[i]}</p>
+                  <p>{s.aiFeedback[i]}</p>
+                </div>
+              ))}
+
+              {s.status === "pending" && (
+                <div>
+                  <button onClick={() => approveSubmission(s.id, "emerging")}>Emerging</button>
+                  <button onClick={() => approveSubmission(s.id, "secure")}>Secure</button>
+                  <button onClick={() => approveSubmission(s.id, "mastery")}>Mastery</button>
+                </div>
+              )}
+
+              {s.status === "approved" && (
+                <p>✅ Approved: {s.points} pts</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* LEADERBOARD */}
+      {view === "leaderboard" && (
+        <div>
+          <h2>🏆 Leaderboard</h2>
+          {leaderboard.map((s, i) => (
+            <p key={i}>{i + 1}. {s.name} – {s.pts} pts</p>
+          ))}
         </div>
       )}
     </div>
