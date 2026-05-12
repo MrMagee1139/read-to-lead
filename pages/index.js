@@ -170,6 +170,15 @@ export default function ReadToLeadApp() {
       </div>
     );
   }
+  
+  const mySubmissions = submissions.filter(
+    (s) => s.student === user.name
+  );
+
+  
+  const myPoints = mySubmissions
+    .filter((s) => s.status === "approved")
+    .reduce((sum, s) => sum + (s.points || 0), 0);
 
   return (
     <div style={{ padding: 20, maxWidth: 700, margin: "auto" }}>
@@ -182,47 +191,76 @@ export default function ReadToLeadApp() {
 
       {/* STUDENT VIEW */}
       {view === "student" && user.role === "student" && (
-        <div>
-          <input
-            placeholder="Book title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
+  <div>
+    <h2>📚 Log a Book</h2>
 
-          <select onChange={(e) => setLevel(e.target.value)}>
-            <option value="">Level</option>
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
-          </select>
+    <input
+      placeholder="Book title"
+      value={title}
+      onChange={(e) => setTitle(e.target.value)}
+    />
 
-          <button onClick={generateQuestions}>Generate Questions</button>
+    <select onChange={(e) => setLevel(e.target.value)}>
+      <option value="">Level</option>
+      <option value="easy">Easy</option>
+      <option value="medium">Medium</option>
+      <option value="hard">Hard</option>
+    </select>
 
-          {questions.map((q, i) => (
-            <div key={i} style={{ marginTop: 10 }}>
-              <p>{q}</p>
+    <button onClick={generateQuestions}>Generate Questions</button>
 
-              <textarea
-                value={answers[i] || ""}
-                onChange={(e) => {
-                  const a = [...answers];
-                  a[i] = e.target.value;
-                  setAnswers(a);
-                }}
-              />
+    {questions.map((q, i) => (
+      <div key={i} style={{ marginTop: 10 }}>
+        <p><strong>Question {i + 1}</strong></p>
+        <p>{q}</p>
 
-              <button onClick={() => markAnswer(q, answers[i], i)}>
-                Check Answer
-              </button>
+        <textarea
+          value={answers[i] || ""}
+          onChange={(e) => {
+            const a = [...answers];
+            a[i] = e.target.value;
+            setAnswers(a);
+          }}
+        />
 
-              <div>{aiFeedback[i]}</div>
-            </div>
-          ))}
+        <button onClick={() => markAnswer(q, answers[i], i)}>
+          Check Answer
+        </button>
 
-          <button onClick={addBook}>Submit</button>
-        </div>
-      )}
+        <div>{aiFeedback[i]}</div>
+      </div>
+    ))}
 
+    <button onClick={addBook}>Submit</button>
+
+    <hr />
+
+    {/* ✅ NEW DASHBOARD SECTION */}
+    <h2>📖 My Reading</h2>
+
+    {mySubmissions.length === 0 && (
+      <p>No books submitted yet</p>
+    )}
+
+    {mySubmissions.map((s) => (
+      <div key={s.id} style={{
+        border: "1px solid #ccc",
+        padding: 10,
+        marginTop: 10
+      }}>
+        <strong>{s.title}</strong>
+
+        {s.status === "approved" ? (
+          <p>✅ Approved ({s.points} pts)</p>
+        ) : (
+          <p>⏳ Pending</p>
+        )}
+      </div>
+    ))}
+
+    <h3>⭐ Total Points: {myPoints}</h3>
+  </div>
+)}
       {/* TEACHER VIEW */}
       {view === "teacher" && user.role === "teacher" && (
         <div>
