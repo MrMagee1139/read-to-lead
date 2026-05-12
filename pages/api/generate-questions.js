@@ -48,7 +48,7 @@ Output ONLY the 3 questions.`
     const questions = text
       .split("\n")
       .map(q => q.replace(/^\d+[.)\s]*/, "").trim())
-      .filter(q => q !== "");
+      .filter(q => q.trim() !== "");
 
     res.status(200).json({ questions });
 
