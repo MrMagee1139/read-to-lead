@@ -84,7 +84,9 @@ export default function ReadToLeadApp() {
 
   // ✅ SAVE SUBMISSION TO DATABASE
   const addBook = async () => {
-    const { error } = await supabase
+    console.log("Submitting to Supabase...");
+    
+    const { data, error } = await supabase
       .from("submissions")
       .insert([
         {
@@ -99,12 +101,12 @@ export default function ReadToLeadApp() {
         }
       ]);
 
+    console.log("Result:", data, error);
+    
     if (error) {
-      console.error(error);
-      alert("Error saving data");
+      alert(error.message);
     } else {
-      alert("✅ Submitted to teacher!");
-      fetchSubmissions(); // refresh
+      alert("✅ Submitted!");
     }
   };
 
