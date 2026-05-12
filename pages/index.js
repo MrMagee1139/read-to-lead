@@ -113,27 +113,36 @@ export default function ReadToLeadApp() {
   // ✅ TEACHER APPROVES + SAVES POINTS
   const approveSubmission = async (id, teacherLevel, bookLevel) => {
 
-    const base = bookLevel === "easy" ? 2 : bookLevel === "medium" ? 5 : 10;
-    const multiplier = teacherLevel === "mastery" ? 2 :
-                       teacherLevel === "secure" ? 1.5 : 1;
+  console.log("Approving:", id, teacherLevel);
 
-    const points = Math.round(base * multiplier);
+  const base =
+    bookLevel === "easy" ? 2 :
+    bookLevel === "medium" ? 5 : 10;
 
-    const { error } = await supabase
-      .from("submissions")
-      .update({
-        status: "approved",
-        teacher_level: teacherLevel,
-        points: points
-      })
-      .eq("id", id);
+  const multiplier =
+    teacherLevel === "mastery" ? 2 :
+    teacherLevel === "secure" ? 1.5 : 1;
 
-    if (error) {
-      console.error(error);
-    } else {
-      fetchSubmissions();
-    }
-  };
+  const points = Math.round(base * multiplier);
+
+  const { data, error } = await supabase
+    .from("submissions")
+    .update({
+      status: "approved",
+      teacher_level: teacherLevel,
+      points: points
+    })
+    .eq("id", id);
+
+  console.log("Update result:", data, error);
+
+  if (error) {
+    alert(error.message);
+  } else {
+    alert("✅ Mark saved!");
+    fetchSubmissions(); // ✅ THIS IS CRITICAL
+  }
+};
 
   // ✅ LEADERBOARD
   const scores = {};
