@@ -55,7 +55,11 @@ export default function ReadToLeadApp() {
 
           <br /><br />
 
-          <button>Generate Questions</button>
+          
+          <button onClick={generateQuestions}>
+              Generate Questions
+          </button>
+
 
           {/* QUESTIONS + ANSWERS */}
           {questions.map((q, i) => (
