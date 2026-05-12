@@ -10,6 +10,7 @@ export default function ReadToLeadApp() {
 
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState([]);
+  const [aiFeedback, setAiFeedback] = useState([]);
 
   // ✅ LOGIN
   const login = (name) => {
@@ -75,6 +76,29 @@ export default function ReadToLeadApp() {
       </div>
     );
   }
+  // ✅ LOGIN SCREEN
+  const markAnswer = async (question, answer, index) => {
+    try {
+      const res = await fetch("/api/mark-answer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ question, answer })
+      });
+
+      const data = await res.json();
+
+      const newFeedback = [...aiFeedback];
+      newFeedback[index] = data.result;
+
+      setAiFeedback(newFeedback);
+
+    } catch (error) {
+      console.error(error);
+      alert("Error checking answer");
+    }
+  };
 
   return (
     <div style={{
@@ -124,37 +148,47 @@ export default function ReadToLeadApp() {
 
           {/* QUESTIONS + ANSWERS */}
           {questions.map((q, i) => (
-            <div key={i} style={{
-              marginTop: 10,
-              padding: 10,
-              border: "1px solid #ccc",
-              borderRadius: 6
-            }}>
-              <p><strong>Question {i + 1}:</strong></p>
-              <p>{q}</p>
+  <div key={i} style={{
+    marginTop: 10,
+    padding: 10,
+    border: "1px solid #ccc",
+    borderRadius: 6
+  }}>
+    <p><strong>Question {i + 1}:</strong></p>
+    <p>{q}</p>
 
-              <textarea
-                placeholder="Write your answer..."
-                value={answers[i] || ""}
-                onChange={(e) => {
-                  const newAnswers = [...answers];
-                  newAnswers[i] = e.target.value;
-                  setAnswers(newAnswers);
-                }}
-                style={{ width: "100%", height: 80 }}
-              />
-            </div>
-          ))}
+    <textarea
+      placeholder="Write your answer..."
+      value={answers[i] || ""}
+      onChange={(e) => {
+        const newAnswers = [...answers];
+        newAnswers[i] = e.target.value;
+        setAnswers(newAnswers);
+      }}
+      style={{ width: "100%", height: 80 }}
+    />
 
-          <br />
+    {/* ✅ NEW AI CHECK BUTTON */}
+    <button
+      onClick={() => markAnswer(q, answers[i], i)}
+      style={{ marginTop: 5 }}
+    >
+      Check Answer
+    </button>
 
-          <button onClick={addBook}>
-            Submit Book
-          </button>
-        </div>
-      )}
+    {/* ✅ SHOW AI FEEDBACK */}
+    {aiFeedback[i] && (
+      <div style={{
+        marginTop: 8,
+        padding: 8,
+        background: "#f0f8ff",
+        borderRadius: 5
+      }}>
+        {aiFeedback[i]}
+      </div>
+    )}
+  </div>
+))}
 
-    </div>
-  );
 }
 ``
