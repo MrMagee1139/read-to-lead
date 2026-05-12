@@ -1,3 +1,4 @@
+const [answers, setAnswers] = useState([]);
 return (
   <div style={{
     padding: 20,
