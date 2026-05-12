@@ -12,6 +12,26 @@ export default function ReadToLeadApp() {
   const [summary, setSummary] = useState("");
   const [inference, setInference] = useState("");
   const [reflection, setReflection] = useState("");
+  const generateQuestions = async () => {
+  try {
+    const res = await fetch("/api/generate-questions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ title }),
+    });
+
+    const data = await res.json();
+
+    setQuestions(data.questions || []);
+    setAnswers(new Array(data.questions.length).fill(""));
+
+  } catch (error) {
+    console.error(error);
+    alert("Error generating questions");
+  }
+};
 
   return (
     <div style={{
