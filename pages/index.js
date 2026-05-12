@@ -56,7 +56,7 @@ export default function ReadToLeadApp() {
           <br /><br />
 
           
-          <button onClick={generateQuestions}>
+          <button onClick={generateQuestions} style={mainBtn}>
               Generate Questions
           </button>
 
