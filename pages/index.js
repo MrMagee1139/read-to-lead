@@ -17,7 +17,8 @@ export default function ReadToLeadApp() {
   const [aiFeedback, setAiFeedback] = useState([]);
 
   const [submissions, setSubmissions] = useState([]);
-
+  const [bookLevel, setBookLevel] = useState(null);
+  
   // ✅ NEW STATES
   const [selectedStatus, setSelectedStatus] = useState({});
   const [teacherFeedback, setTeacherFeedback] = useState({});
@@ -40,6 +41,19 @@ export default function ReadToLeadApp() {
 
     if (error) console.error(error);
     else setSubmissions(data || []);
+  };
+
+  const getBookLevel = async () => {
+    const res = await fetch("/api/get-book-level", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ title })
+    });
+
+    const data = await res.json();
+    setBookLevel(data);
   };
 
   // ✅ GENERATE QUESTIONS
