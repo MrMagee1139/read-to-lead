@@ -11,77 +11,75 @@ export default async function handler(req, res) {
       });
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({
-        questions: ["API key is missing"],
-        difficulty: "medium"
-      });
-    }
-
     const client = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    const completion = await client.chat.completions.create({
+    // ✅ 1. Generate questions
+    const questionResponse = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: "You are a KS2 reading assistant helping multilingual learners."
+          content: "You are a KS2 reading assistant."
         },
         {
           role: "user",
-          content: `
-Book: "${title}"
-
-TASK:
-1. Create exactly 3 comprehension questions
-2. Estimate the reading difficulty of the book
-
-RULES:
-- Do NOT include explanations
-- Questions must be simple for KS2
-- One WHAT, one WHY, one lesson question
-
-Return ONLY valid JSON in this format:
-{
-  "questions": ["question1", "question2", "question3"],
-  "difficulty": "easy | medium | hard"
-}
-`
+          content: `Create exactly 3 comprehension questions about "${title}".
+Rules:
+- No numbering
+- Simple language
+- One WHAT, one WHY, one lesson question`
         }
       ]
     });
 
-    const text = completion.choices?.[0]?.message?.content || "";
+    const qText = questionResponse.choices?.[0]?.message?.content || "";
 
-    let parsed;
+    const questions = qText
+      .split("\n")
+      .map(q => q.replace(/^\d+[.)\s]*/, "").trim())
+      .filter(q => q !== "")
+      .slice(0, 3);
 
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      // ✅ fallback if AI formatting breaks
-      parsed = {
-        questions: text
-          .split("\n")
-          .map(q => q.trim())
-          .filter(q => q !== "")
-          .slice(0, 3),
-        difficulty: "medium"
-      };
+    // ✅ 2. Get difficulty (SEPARATE CALL - MUCH MORE RELIABLE)
+    const difficultyResponse = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "You classify book difficulty for primary students."
+        },
+        {
+          role: "user",
+          content: `Classify this book for KS2:
+"${title}"
+
+Respond with ONE word only:
+easy OR medium OR hard`
+        }
+      ]
+    });
+
+    let difficulty = difficultyResponse.choices?.[0]?.message?.content?.toLowerCase().trim();
+
+    // ✅ Safety clean
+    if (!["easy", "medium", "hard"].includes(difficulty)) {
+      difficulty = "medium";
     }
 
     res.status(200).json({
-      questions: parsed.questions || [],
-      difficulty: parsed.difficulty || "medium"
+      questions,
+      difficulty
     });
 
   } catch (error) {
     console.error("AI ERROR:", error);
 
     res.status(200).json({
-      questions: ["Error generating questions."],
+      questions: ["Error generating questions"],
       difficulty: "medium"
     });
   }
 }
+``
