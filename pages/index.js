@@ -80,15 +80,6 @@ export default function ReadToLeadApp() {
     setAiFeedback(newFeedback);
   };
   
-  if (difficulty === "hard") {
-      const tooShort = answers.some(a => (a || "").length < 40);
-
-      if (tooShort) {
-          alert("For harder books, please give longer, detailed answers.");
-          return;
-      }
-  }
-  
   // ✅ SUBMIT
   const addBook = async () => {
 
