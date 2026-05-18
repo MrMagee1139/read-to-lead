@@ -79,7 +79,16 @@ export default function ReadToLeadApp() {
     newFeedback[index] = data.result;
     setAiFeedback(newFeedback);
   };
+  
+  if (difficult === "hard") {
+      const tooShort = answers.some(a => (a || "").length < 40);
 
+      if (tooShort) {
+          alert("For harder books, please give longer, detailed answers.");
+          return;
+      }
+  }
+  
   // ✅ SUBMIT
   const addBook = async () => {
     const { error } = await supabase.from("submissions").insert([
@@ -220,7 +229,7 @@ const mySubmissions = user
               <textarea               
                 style={{
                   width: "100%",
-                  height: "120px",
+                  height: difficulty === "hard" ? "160px" : "120px",
                   padding: "10px",
                   fontSize: "14px",
                   borderRadius: "6px",
@@ -240,6 +249,15 @@ const mySubmissions = user
             </div>
           ))}
 
+          {difficulty === "hard" && (
+            <p style={{ color: "red" }}>
+              ⚠️ For this book, give detailed answers (at least 2–3 sentences)
+            </p>
+          )}
+ 
+{difficulty === "medium" && (
+  <p>Explain your thinking clearly.</p>
+)}
           <button onClick={addBook}>Submit</button>
             
           <h2>📖 My Submissions</h2>
