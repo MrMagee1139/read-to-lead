@@ -78,6 +78,7 @@ export default function ReadToLeadApp() {
       {
         student: user.name,
         title,
+        difficulty: bookLevel?.difficulty || "medium",
         questions,
         answers,
         ai_feedback: aiFeedback,
@@ -97,20 +98,27 @@ export default function ReadToLeadApp() {
   const reviewSubmission = async (id) => {
     const status = selectedStatus[id];
     const feedback = teacherFeedback[id];
+    const difficulty = {
+      easy: 1,
+      medium: 1.5,
+      hard: 2
+    }[submissions.find(s => s.id === id)?.difficulty] || 1;
+
+    const quality = {
+      mastery: 2,
+      secure: 1.5,
+      emerging: 1
+    }[status] || 0;
+
+    let points = 0;
 
     if (!feedback || feedback.trim() === "") {
       alert("Feedback required");
       return;
     }
 
-    let points = 0;
-
     if (status !== "rejected") {
-      const multiplier =
-        status === "mastery" ? 2 :
-        status === "secure" ? 1.5 : 1;
-
-      points = Math.round(5 * multiplier);
+      points = Math.round(5 * difficulty * quality);
     }
 
     const { error } = await supabase
@@ -241,7 +249,8 @@ export default function ReadToLeadApp() {
       {view === "teacher" && user.role === "teacher" && (
         <div>
           <h2>Teacher Dashboard ({pendingCount})</h2>
-
+          <p>📊 Difficulty: {s.difficulty}</p>
+        
           <h3>🟡 Needs Review</h3>
 
           {pendingSubmissions.map((s) => (
