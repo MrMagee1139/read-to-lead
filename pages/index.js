@@ -212,7 +212,15 @@ export default function ReadToLeadApp() {
           {questions.map((q, i) => (
             <div key={i}>
               <p>{q}</p>
-              <textarea
+              <textarea               
+                style={{
+                  width: "100%",
+                  height: "120px",
+                  padding: "10px",
+                  fontSize: "14px",
+                  borderRadius: "6px",
+                  border: "1px solid #ccc"
+                }}
                 value={answers[i] || ""}
                 onChange={(e) => {
                   const a = [...answers];
@@ -277,6 +285,14 @@ export default function ReadToLeadApp() {
               {selectedStatus[s.id] && (
                 <>
                   <textarea
+                   style={{
+                      width: "100%",
+                      height: "120px",
+                      padding: "10px",
+                      fontSize: "14px",
+                      borderRadius: "6px",
+                      border: "1px solid #ccc"
+                    }} 
                     value={teacherFeedback[s.id] || ""}
                     onChange={(e) =>
                       setTeacherFeedback({
