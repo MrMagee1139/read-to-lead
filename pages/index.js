@@ -306,11 +306,18 @@ export default function ReadToLeadApp() {
   </div>
 )}
       {/* TEACHER VIEW */}
+      const pendingCount = submissions.filter(s => s.status === "pending").length;
+      <h2>Teacher Dashboard ({pendingCount} to review)</h2>
+      
+      const sortedSubmissions = [...submissions].sort((a, b) =>
+        a.status === "pending" ? -1 : 1
+      );
+
       {view === "teacher" && user.role === "teacher" && (
         <div>
           <h2>Teacher Dashboard</h2>
 
-          {submissions.map((s) => (
+          {sortedSubmissions.map((s) => (
             <div key={s.id} style={{ border: "1px solid black", margin: 10 }}>
               <p><strong>{s.student}</strong> - {s.title}</p>
 
