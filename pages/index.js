@@ -174,6 +174,11 @@ export default function ReadToLeadApp() {
 
   const pendingCount = pendingSubmissions.length;
 
+  
+  const mySubmissions = safeSubmissions.filter(
+    (s) => s.student === user.name
+  );
+
   // ✅ LOGIN SCREEN
   if (!user) {
     return (
@@ -236,6 +241,51 @@ export default function ReadToLeadApp() {
           ))}
 
           <button onClick={addBook}>Submit</button>
+            
+          <h2>📖 My Submissions</h2>
+
+          {mySubmissions.length === 0 && <p>No submissions yet</p>}
+
+          {mySubmissions.map((s) => (
+            <div
+              key={s.id}
+              style={{
+                border: "1px solid #ccc",
+                padding: 10,
+                marginTop: 10
+              }}
+            >
+              <strong>{s.title}</strong>
+
+              {s.status === "pending" && (
+                <p>⏳ Waiting for teacher review</p>
+              )}
+
+              {s.status === "approved" && (
+                <>
+                  <p>✅ {s.teacher_level} ({s.points} pts)</p>
+                  <p>💬 {s.teacher_feedback}</p>
+                </>
+              )}
+
+              {s.status === "rejected" && (
+                <>
+                  <p style={{ color: "red" }}>❌ Needs improvement</p>
+                  <p>💬 {s.teacher_feedback}</p>
+
+                  <button onClick={() => {
+                    setTitle(s.title);
+                    setQuestions(s.questions || []);
+                    setAnswers(s.answers || []);
+                    setAiFeedback(s.ai_feedback || []);
+                  }}>
+                    ✏️ Improve and Resubmit
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+
         </div>
       )}
 
