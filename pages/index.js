@@ -91,6 +91,17 @@ export default function ReadToLeadApp() {
   
   // ✅ SUBMIT
   const addBook = async () => {
+
+    // ✅ MOVE VALIDATION HERE (CORRECT PLACE)
+    if (difficulty === "hard") {
+      const tooShort = answers.some(a => (a || "").length < 40);
+
+      if (tooShort) {
+        alert("For harder books, please give longer, detailed answers.");
+        return;
+      }
+    }
+
     const { error } = await supabase.from("submissions").insert([
       {
         student: user.name,
