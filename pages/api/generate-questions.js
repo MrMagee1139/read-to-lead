@@ -23,36 +23,30 @@ export default function ReadToLeadApp() {
   const [selectedStatus, setSelectedStatus] = useState({});
   const [teacherFeedback, setTeacherFeedback] = useState({});
  
-  // ✅ LOGIN (READY FOR MS365)
+  // ✅ LOGIN (ready for MS365)
   const login = (name) => {
-    const role = name.toLowerCase().includes("teacher")
-      ? "teacher"
-      : "student";
+    const role = name.toLowerCase().includes("teacher") ? "teacher" : "student";
  
-    // ✅ Temporary placeholder (will come from MS365 tomorrow)
+    // will come from MS365 later
     const yearGroup = "Y5";
  
     setUser({ name, role, yearGroup });
   };
  
-  // ✅ LOAD DATA
   useEffect(() => {
     fetchSubmissions();
   }, []);
  
   const fetchSubmissions = async () => {
-    const { data, error } = await supabase.from("submissions").select("*");
-    if (error) console.error(error);
-    else setSubmissions(data || []);
+    const { data } = await supabase.from("submissions").select("*");
+    setSubmissions(data || []);
   };
  
-  // ✅ GENERATE QUESTIONS (NOW SENDS YEAR GROUP)
+  // ✅ AI QUESTIONS
   const generateQuestions = async () => {
     const res = await fetch("/api/generate-questions", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title,
         yearGroup: user?.yearGroup || "Y5"
@@ -61,28 +55,21 @@ export default function ReadToLeadApp() {
  
     const data = await res.json();
  
-    const qs = data.questions || [];
-    const diff = data.difficulty || "medium";
+    setQuestions(data.questions || []);
+    setDifficulty(data.difficulty || "medium");
  
-    setQuestions(qs);
-    setDifficulty(diff);
- 
-    setAnswers(new Array(qs.length).fill(""));
-    setAiFeedback(new Array(qs.length).fill(""));
+    setAnswers(new Array((data.questions || []).length).fill(""));
+    setAiFeedback(new Array((data.questions || []).length).fill(""));
   };
  
-  // ✅ MARK ANSWERS
   const markAnswer = async (question, answer, index) => {
     const res = await fetch("/api/mark-answer", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question, answer })
     });
  
     const data = await res.json();
- 
     const newFeedback = [...aiFeedback];
     newFeedback[index] = data.result;
     setAiFeedback(newFeedback);
@@ -94,77 +81,53 @@ export default function ReadToLeadApp() {
     if (difficulty === "hard") {
       const tooShort = answers.some(a => (a || "").length < 40);
       if (tooShort) {
-        alert("Please give longer answers for harder books.");
+        alert("Please give longer answers for challenging books.");
         return;
       }
     }
  
-    const { error } = await supabase.from("submissions").insert([
-      {
-        student: user.name,
-        year_group: user.yearGroup, // ✅ READY FOR DATA
-        title,
-        difficulty,
-        questions,
-        answers,
-        ai_feedback: aiFeedback,
-        status: "pending",
-        points: 0
-      }
-    ]);
+    await supabase.from("submissions").insert([{
+      student: user.name,
+      year_group: user.yearGroup,
+      title,
+      difficulty,
+      questions,
+      answers,
+      ai_feedback: aiFeedback,
+      status: "pending",
+      points: 0
+    }]);
  
-    if (error) alert(error.message);
-    else {
-      alert("✅ Submitted!");
-      fetchSubmissions();
-    }
+    alert("✅ Submitted!");
+    fetchSubmissions();
   };
  
-  // ✅ REVIEW + NEXT TARGET
+  // ✅ REVIEW
   const reviewSubmission = async (id) => {
+ 
     const status = selectedStatus[id];
     const feedback = teacherFeedback[id];
  
-    if (!feedback || feedback.trim() === "") {
-      alert("Feedback required");
+    if (!feedback) {
+      alert("Write feedback first");
       return;
     }
  
-    const submission = submissions.find((s) => s.id === id);
+    const submission = submissions.find(s => s.id === id);
  
     let nextTarget = "";
  
-    if (status === "rejected") {
-      nextTarget = "Improve your answers by adding more detail.";
-    } else if (status === "emerging") {
-      nextTarget = "Explain your thinking more clearly.";
-    } else if (status === "secure") {
-      nextTarget = submission?.difficulty === "easy"
-        ? "Try a more challenging book."
-        : "Keep improving your explanations.";
-    } else if (status === "mastery") {
-      nextTarget = "Excellent! Try a more challenging book.";
-    }
+    if (status === "rejected") nextTarget = "Improve your answers with more detail.";
+    else if (status === "emerging") nextTarget = "Explain your thinking more clearly.";
+    else if (status === "secure") nextTarget = "Try a more challenging book next.";
+    else if (status === "mastery") nextTarget = "Excellent! Push yourself with harder texts.";
  
-    const difficultyMultiplier = {
-      easy: 1,
-      medium: 1.5,
-      hard: 2
-    }[submission?.difficulty || "medium"];
+    const diff = { easy: 1, medium: 1.5, hard: 2 }[submission?.difficulty];
+    const qual = { emerging: 1, secure: 1.5, mastery: 2 }[status];
  
-    const qualityMultiplier = {
-      mastery: 2,
-      secure: 1.5,
-      emerging: 1
-    }[status] || 1;
+    const points = status === "rejected" ? 0 : Math.round(5 * diff * qual);
  
-    let points = 0;
- 
-    if (status !== "rejected") {
-      points = Math.round(5 * difficultyMultiplier * qualityMultiplier);
-    }
- 
-    const { error } = await supabase
+    await supabase
       .from("submissions")
       .update({
         status: status === "rejected" ? "rejected" : "approved",
@@ -175,90 +138,98 @@ export default function ReadToLeadApp() {
       })
       .eq("id", id);
  
-    if (error) alert(error.message);
-    else {
-      alert(`✅ Saved! (${points} pts)`);
-      fetchSubmissions();
-    }
+    alert("✅ Saved!");
+    fetchSubmissions();
   };
  
-  // ✅ DATA
-  const safeSubmissions = Array.isArray(submissions) ? submissions : [];
- 
   const mySubmissions = user
-    ? safeSubmissions.filter((s) => s.student === user.name)
+    ? submissions.filter(s => s.student === user.name)
     : [];
  
-  const pendingSubmissions = safeSubmissions.filter(
-    (s) => s.status === "pending"
-  );
+  const pending = submissions.filter(s => s.status === "pending");
  
-  // ✅ LEADERBOARD
-  const scores = {};
-  safeSubmissions.forEach((s) => {
-    if (s.status === "approved") {
-      scores[s.student] = (scores[s.student] || 0) + s.points;
-    }
-  });
- 
-  const leaderboard = Object.entries(scores)
-    .map(([name, pts]) => ({ name, pts }))
-    .sort((a, b) => b.pts - a.pts);
- 
-  // ✅ PROGRESS TRACKING
-  const myProgress = mySubmissions
-    .filter(s => s.status === "approved")
-    .map(s => ({
-      title: s.title,
-      difficulty: s.difficulty,
-      level: s.teacher_level,
-      points: s.points
-    }));
+  const leaderboard = Object.entries(
+    submissions.reduce((acc, s) => {
+      if (s.status === "approved")
+        acc[s.student] = (acc[s.student] || 0) + s.points;
+      return acc;
+    }, {})
+  ).map(([name, pts]) => ({ name, pts }))
+   .sort((a, b) => b.pts - a.pts);
  
   // ✅ LOGIN SCREEN
   if (!user) {
     return (
-      <div style={{ padding: 20 }}>
-        <h2>Login</h2>
-        <input
-          placeholder="Enter name (add 'teacher')"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") login(e.target.value);
-          }}
-        />
+      <div style={{
+        height: "100vh",
+        background: "linear-gradient(135deg, #001f3f, #7a0019)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "white"
+      }}>
+        <div style={{
+          background: "white",
+          color: "#001f3f",
+          padding: "40px",
+          borderRadius: "10px",
+          textAlign: "center"
+        }}>
+          <h1>📚 Read to Lead</h1>
+          <p>Harrow Shenzhen Reading Platform</p>
+          <input
+            placeholder="Enter name (add 'teacher')"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") login(e.target.value);
+            }}
+          />
+        </div>
       </div>
     );
   }
  
   return (
-    <div style={{ padding: 20 }}>
-      <h1>📚 Read to Lead</h1>
-      <h3>{user.name} ({user.role})</h3>
+    <div style={{
+      background: "#f5f5f5",
+      minHeight: "100vh",
+      padding: "20px",
+      fontFamily: "Arial"
+    }}>
  
-      <button onClick={() => setView("student")}>Student</button>
-      <button onClick={() => setView("teacher")}>Teacher</button>
-      <button onClick={() => setView("leaderboard")}>Leaderboard</button>
+      {/* HEADER */}
+      <div style={{
+        background: "#001f3f",
+        color: "white",
+        padding: "20px",
+        borderRadius: "10px"
+      }}>
+        <h1>📚 Read to Lead</h1>
+        <p>{user.name} ({user.role})</p>
+      </div>
+ 
+      <div style={{ marginTop: "10px" }}>
+        <button onClick={() => setView("student")}>Student</button>
+        <button onClick={() => setView("teacher")}>Teacher</button>
+        <button onClick={() => setView("leaderboard")}>Leaderboard</button>
+      </div>
  
       {/* STUDENT */}
       {view === "student" && user.role === "student" && (
-        <div>
+        <div style={{ background: "white", padding: "20px", marginTop: "10px", borderRadius: "10px" }}>
  
-          <input
-            placeholder="Book title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
+          <h2>📚 Log Your Reading</h2>
+ 
+          <input value={title} onChange={e => setTitle(e.target.value)} />
  
           <button onClick={generateQuestions}>Generate Questions</button>
  
           {questions.map((q, i) => (
             <div key={i}>
-              <p>{q}</p>
- 
+              <p>❓ {q}</p>
               <textarea
                 style={{
                   width: "100%",
-                  height: difficulty === "hard" ? "160px" : "120px"
+                  height: difficulty === "hard" ? "150px" : "100px"
                 }}
                 value={answers[i] || ""}
                 onChange={(e) => {
@@ -267,61 +238,39 @@ export default function ReadToLeadApp() {
                   setAnswers(a);
                 }}
               />
- 
               <button onClick={() => markAnswer(q, answers[i], i)}>
-                Check
+                ✅ Check
               </button>
- 
-              <p>{aiFeedback[i]}</p>
+              <p>💡 {aiFeedback[i]}</p>
             </div>
           ))}
  
-          <button onClick={addBook}>Submit</button>
+          <button onClick={addBook}>🚀 Submit</button>
  
-          {/* ✅ SUBMISSIONS */}
           <h2>📖 My Submissions</h2>
- 
           {mySubmissions.map((s) => (
             <div key={s.id}>
               <strong>{s.title}</strong>
- 
-              {s.status === "approved" && (
-                <>
-                  <p>✅ {s.teacher_level} ({s.points})</p>
-                  <p>{s.teacher_feedback}</p>
-                  <p>🎯 {s.next_target}</p>
-                </>
-              )}
- 
-              {s.status === "rejected" && (
-                <>
-                  <p>❌ Needs improvement</p>
-                  <p>{s.teacher_feedback}</p>
-                </>
-              )}
+              <p>{s.teacher_feedback}</p>
+              <p>🎯 {s.next_target}</p>
             </div>
           ))}
  
-          {/* ✅ PROGRESS */}
           <h2>📈 My Progress</h2>
- 
-          {myProgress.map((p, i) => (
-            <div key={i}>
-              {p.title} → {p.difficulty} → {p.level} → ⭐ {p.points}
-            </div>
+          {mySubmissions.map((s, i) => (
+            <p key={i}>📘 {s.title} → {s.teacher_level} → ⭐ {s.points}</p>
           ))}
- 
         </div>
       )}
  
       {/* TEACHER */}
-      {view === "teacher" && user.role === "teacher" && (
+      {view === "teacher" && (
         <div>
-          <h2>{pendingSubmissions.length} to Review</h2>
+          <h2>{pending.length} to review</h2>
  
-          {pendingSubmissions.map((s) => (
-            <div key={s.id} style={{ background: "#fff3cd", margin: 10 }}>
-              <p>{s.student} - {s.title} ({s.year_group})</p>
+          {pending.map(s => (
+            <div key={s.id}>
+              <p>{s.student} - {s.title}</p>
  
               {s.questions.map((q, i) => (
                 <div key={i}>
@@ -331,40 +280,14 @@ export default function ReadToLeadApp() {
                 </div>
               ))}
  
-              <button onClick={() =>
-                setSelectedStatus({ ...selectedStatus, [s.id]: "emerging" })
-              }>Emerging</button>
+              <button onClick={() => setSelectedStatus({ ...selectedStatus, [s.id]: "emerging" })}>Emerging</button>
+              <button onClick={() => setSelectedStatus({ ...selectedStatus, [s.id]: "secure" })}>Secure</button>
+              <button onClick={() => setSelectedStatus({ ...selectedStatus, [s.id]: "mastery" })}>Mastery</button>
+              <button onClick={() => setSelectedStatus({ ...selectedStatus, [s.id]: "rejected" })}>Reject</button>
  
-              <button onClick={() =>
-                setSelectedStatus({ ...selectedStatus, [s.id]: "secure" })
-              }>Secure</button>
+              <textarea onChange={e => setTeacherFeedback({ ...teacherFeedback, [s.id]: e.target.value })} />
  
-              <button onClick={() =>
-                setSelectedStatus({ ...selectedStatus, [s.id]: "mastery" })
-              }>Mastery</button>
- 
-              <button onClick={() =>
-                setSelectedStatus({ ...selectedStatus, [s.id]: "rejected" })
-              }>
-                Reject
-              </button>
- 
-              {selectedStatus[s.id] && (
-                <>
-                  <textarea
-                    value={teacherFeedback[s.id] || ""}
-                    onChange={(e) =>
-                      setTeacherFeedback({
-                        ...teacherFeedback,
-                        [s.id]: e.target.value
-                      })
-                    }
-                  />
-                  <button onClick={() => reviewSubmission(s.id)}>
-                    Submit Review
-                  </button>
-                </>
-              )}
+              <button onClick={() => reviewSubmission(s.id)}>Submit Review</button>
             </div>
           ))}
         </div>
@@ -375,9 +298,7 @@ export default function ReadToLeadApp() {
         <div>
           <h2>🏆 Leaderboard</h2>
           {leaderboard.map((s, i) => (
-            <p key={i}>
-              {i + 1}. {s.name} – {s.pts} pts
-            </p>
+            <p key={i}>{i + 1}. {s.name} – {s.pts}</p>
           ))}
         </div>
       )}
@@ -385,3 +306,4 @@ export default function ReadToLeadApp() {
     </div>
   );
 }
+``
