@@ -220,13 +220,15 @@ export default function ReadToLeadApp() {
     .filter((s) => s.status === "approved")
     .reduce((sum, s) => sum + (s.points || 0), 0);
   
-  const pendingCount = submissions.filter(
+  const pendingSubmissions = submissions.filter(
     (s) => s.status === "pending"
   ).length;
 
-  const sortedSubmissions = [...submissions].sort((a, b) =>
-    a.status === "pending" ? -1 : 1
+  const reviewedSubmissions = submissions.filter(
+    (s) => s.status === "approved" || s.status === "rejected"
   );
+    
+  const pendingCount = pendingSubmissions.length;
 
   return (
     <div style={{ padding: 20, maxWidth: 700, margin: "auto" }}>
@@ -318,8 +320,17 @@ export default function ReadToLeadApp() {
         <div>
           <h2>Teacher Dashboard ({pendingCount} to review)</h2>
 
-          {sortedSubmissions.map((s) => (
-            <div key={s.id} style={{ border: "1px solid black", margin: 10 }}>
+          
+          {/* ✅ PENDING WORK */}
+          <h3>🟡 Needs Review</h3>
+  
+          {pendingSubmissions.map((s) => (
+            <div key={s.id} style={{
+              border: "1px solid black",
+              margin: 10,
+              backgroundColor: "#fff3cd", // light yellow
+              padding: 10
+            }}>
               <p><strong>{s.student}</strong> - {s.title}</p>
 
               {s.questions?.map((q, i) => (
@@ -330,7 +341,7 @@ export default function ReadToLeadApp() {
                 </div>
               ))}
 
-              {s.status === "pending" && (
+              {/* ✅ REVIEW BUTTONS */}
                 <div>
                   <button onClick={() =>
                     setSelectedStatus({ ...selectedStatus, [s.id]: "emerging" })
@@ -372,23 +383,38 @@ export default function ReadToLeadApp() {
                           })
                         }
                       />
-
                       <br />
-
                       <button onClick={() => reviewSubmission(s.id)}>
                         Submit Review
                       </button>
                     </div>
                   )}
                 </div>
-              )}
+              ))}
 
+              {/* ✅ REVIEWED WORK */}
+              <h3>✅ Reviewed</h3>
 
-              {s.status === "approved" && (
-                <p>✅ Approved: {s.points} pts</p>
-              )}
-            </div>
-          ))}
+              {reviewedSubmissions.map((s) => (
+                <div key={s.id} style={{
+                  border: "1px solid #ccc",
+                  margin: 10,
+                  padding: 10,
+                  opacity: 0.85
+                }}>
+                  <p><strong>{s.student}</strong> - {s.title}</p>
+
+                  {s.status === "approved" && (
+                    <p>✅ {s.teacher_level} ({s.points} pts)</p>
+                  )}
+
+                  {s.status === "rejected" && (
+                    <p>❌ Rejected</p>
+                  )}
+
+                  <p>💬 {s.teacher_feedback}</p>
+              </div>
+            ))}
         </div>
       )}
 
