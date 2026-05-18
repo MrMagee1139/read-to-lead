@@ -243,11 +243,22 @@ export default function ReadToLeadApp() {
       }}>
         <strong>{s.title}</strong>
 
-        {s.status === "approved" ? (
-          <p>✅ Approved ({s.points} pts)</p>
-        ) : (
-          <p>⏳ Pending</p>
+        {s.status === "approved" && (
+          <>
+            <p>✅ {s.teacher_level} ({s.points} pts)</p>
+            <p>💬 {s.teacher_feedback}</p>
+          </>
         )}
+
+        {s.status === "rejected" && (
+          <>
+            <p>❌ Needs improvement</p>
+            <p>💬 {s.teacher_feedback}</p>
+          </>
+        )}
+
+        {s.status === "pending" && <p>⏳ Pending</p>}
+        ``
       </div>
     ))}
 
