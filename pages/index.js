@@ -11,7 +11,7 @@ export default function ReadToLeadApp() {
   const [view, setView] = useState("student");
 
   const [title, setTitle] = useState("");
-  const [bookLevel, setBookLevel] = useState(null);
+  const [difficulty, setDifficulty] = useState("medium");
 
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState([]);
@@ -41,21 +41,7 @@ export default function ReadToLeadApp() {
     else setSubmissions(data || []);
   };
 
-  // ✅ CHECK BOOK LEVEL (mock or AI)
-  const getBookLevel = async () => {
-    const res = await fetch("/api/get-book-level", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ title })
-    });
-
-    const data = await res.json();
-    setBookLevel(data);
-  };
-
-  // ✅ GENERATE QUESTIONS
+  // ✅ GENERATE QUESTIONS + DIFFICULTY
   const generateQuestions = async () => {
     const res = await fetch("/api/generate-questions", {
       method: "POST",
@@ -66,9 +52,13 @@ export default function ReadToLeadApp() {
     });
 
     const data = await res.json();
+
     const qs = data.questions || [];
+    const diff = data.difficulty || "medium"; // ✅ IMPORTANT
 
     setQuestions(qs);
+    setDifficulty(diff);
+
     setAnswers(new Array(qs.length).fill(""));
     setAiFeedback(new Array(qs.length).fill(""));
   };
@@ -89,13 +79,13 @@ export default function ReadToLeadApp() {
     setAiFeedback(newFeedback);
   };
 
-  // ✅ SUBMIT BOOK
+  // ✅ SUBMIT
   const addBook = async () => {
     const { error } = await supabase.from("submissions").insert([
       {
         student: user.name,
         title,
-        difficulty: bookLevel?.difficulty || "medium",
+        difficulty: difficulty || "medium",
         questions,
         answers,
         ai_feedback: aiFeedback,
@@ -111,7 +101,7 @@ export default function ReadToLeadApp() {
     }
   };
 
-  // ✅ TEACHER REVIEW WITH CORRECT SCORING
+  // ✅ REVIEW (FIXED + SAFE)
   const reviewSubmission = async (id) => {
     const status = selectedStatus[id];
     const feedback = teacherFeedback[id];
@@ -121,7 +111,7 @@ export default function ReadToLeadApp() {
       return;
     }
 
-    const submission = submissions.find((item) => item.id === id);
+    const submission = submissions.find((s) => s.id === id);
 
     const difficultyMultiplier = {
       easy: 1,
@@ -166,8 +156,20 @@ export default function ReadToLeadApp() {
   );
 
   const reviewedSubmissions = safeSubmissions.filter(
-    (s) => s.status === "approved" || s.status === "rejected"
+    (s) => s.status !== "pending"
   );
+
+  // ✅ LEADERBOARD
+  const scores = {};
+  safeSubmissions.forEach((s) => {
+    if (s.status === "approved") {
+      scores[s.student] = (scores[s.student] || 0) + s.points;
+    }
+  });
+
+  const leaderboard = Object.entries(scores)
+    .map(([name, pts]) => ({ name, pts }))
+    .sort((a, b) => b.pts - a.pts);
 
   const pendingCount = pendingSubmissions.length;
 
@@ -186,17 +188,14 @@ export default function ReadToLeadApp() {
     );
   }
 
-  const mySubmissions = safeSubmissions.filter(
-    (s) => s.student === user.name
-  );
-
   return (
-    <div style={{ padding: 20, maxWidth: 700, margin: "auto" }}>
+    <div style={{ padding: 20 }}>
       <h1>📚 Read to Lead</h1>
       <h3>{user.name} ({user.role})</h3>
 
       <button onClick={() => setView("student")}>Student</button>
       <button onClick={() => setView("teacher")}>Teacher</button>
+      <button onClick={() => setView("leaderboard")}>Leaderboard</button>
 
       {/* STUDENT */}
       {view === "student" && user.role === "student" && (
@@ -207,18 +206,11 @@ export default function ReadToLeadApp() {
             onChange={(e) => setTitle(e.target.value)}
           />
 
-          <button onClick={getBookLevel}>Check Level</button>
-
-          {bookLevel && (
-            <p>📊 Difficulty: {bookLevel.difficulty}</p>
-          )}
-
           <button onClick={generateQuestions}>Generate Questions</button>
 
           {questions.map((q, i) => (
             <div key={i}>
               <p>{q}</p>
-
               <textarea
                 value={answers[i] || ""}
                 onChange={(e) => {
@@ -227,11 +219,9 @@ export default function ReadToLeadApp() {
                   setAnswers(a);
                 }}
               />
-
               <button onClick={() => markAnswer(q, answers[i], i)}>
                 Check
               </button>
-
               <p>{aiFeedback[i]}</p>
             </div>
           ))}
@@ -245,18 +235,16 @@ export default function ReadToLeadApp() {
         <div>
           <h2>{pendingCount} to Review</h2>
 
-          <h3>🟡 Pending</h3>
-
           {pendingSubmissions.map((s) => (
             <div key={s.id} style={{ background: "#fff3cd", margin: 10 }}>
-              <p>{s.student} - {s.title} (📊 {s.difficulty})</p>
+              <p>{s.student} - {s.title}</p>
+              <p>📊 {s.difficulty}</p>
 
               {Array.isArray(s.questions) &&
                 s.questions.map((q, i) => (
                   <div key={i}>
                     <p>{q}</p>
                     <p>{s.answers?.[i]}</p>
-                    <p>{s.ai_feedback?.[i]}</p>
                   </div>
                 ))}
 
@@ -296,20 +284,18 @@ export default function ReadToLeadApp() {
               )}
             </div>
           ))}
+        </div>
+      )}
 
-          <h3>✅ Reviewed</h3>
-
-          {reviewedSubmissions.map((s) => (
-            <div key={s.id} style={{ margin: 10 }}>
-              <p>{s.student} - {s.title}</p>
-              <p>{s.teacher_level}</p>
-              <p>{s.teacher_feedback}</p>
-              <p>⭐ {s.points}</p>
-            </div>
+      {/* LEADERBOARD */}
+      {view === "leaderboard" && (
+        <div>
+          <h2>🏆 Leaderboard</h2>
+          {leaderboard.map((s, i) => (
+            <p key={i}>{i + 1}. {s.name} – {s.pts} pts</p>
           ))}
         </div>
       )}
     </div>
   );
 }
-``
