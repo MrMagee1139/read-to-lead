@@ -52,6 +52,7 @@ export default function ReadToLeadApp() {
     });
 
     const data = await res.json();
+    console.log("API response:", data);
 
     const qs = data.questions || [];
     const diff = data.difficulty || "medium"; // ✅ IMPORTANT
