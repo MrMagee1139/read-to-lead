@@ -195,17 +195,10 @@ export default function ReadToLeadApp() {
     <h2>📚 Log a Book</h2>
 
     <input
-      placeholder="Book title"
+      placeholder="Enter Book title"
       value={title}
       onChange={(e) => setTitle(e.target.value)}
     />
-
-    <select onChange={(e) => setLevel(e.target.value)}>
-      <option value="">Level</option>
-      <option value="easy">Easy</option>
-      <option value="medium">Medium</option>
-      <option value="hard">Hard</option>
-    </select>
 
     <button onClick={generateQuestions}>Generate Questions</button>
 
@@ -280,11 +273,57 @@ export default function ReadToLeadApp() {
 
               {s.status === "pending" && (
                 <div>
-                  <button onClick={() => approveSubmission(s.id, "emerging", s.level)}>Emerging</button>
-                  <button onClick={() => approveSubmission(s.id, "secure", s.level)}>Secure</button>
-                  <button onClick={() => approveSubmission(s.id, "mastery", s.level)}>Mastery</button>
+                  <button onClick={() =>
+                    setSelectedStatus({ ...selectedStatus, [s.id]: "emerging" })
+                  }>
+                    Emerging
+                  </button>
+
+                  <button onClick={() =>
+                    setSelectedStatus({ ...selectedStatus, [s.id]: "secure" })
+                  }>
+                    Secure
+                  </button>
+
+                  <button onClick={() =>
+                    setSelectedStatus({ ...selectedStatus, [s.id]: "mastery" })
+                  }>
+                    Mastery
+                  </button>
+
+                  <button
+                    style={{ backgroundColor: "red", color: "white" }}
+                    onClick={() =>
+                      setSelectedStatus({ ...selectedStatus, [s.id]: "rejected" })
+                    }
+                  >
+                    Reject
+                  </button>
+
+                  {/* ✅ FEEDBACK BOX APPEARS AFTER SELECT */}
+                  {selectedStatus[s.id] && (
+                    <div style={{ marginTop: 10 }}>
+                      <textarea
+                        placeholder="Write feedback for student..."
+                        value={teacherFeedback[s.id] || ""}
+                        onChange={(e) =>
+                          setTeacherFeedback({
+                            ...teacherFeedback,
+                            [s.id]: e.target.value
+                          })
+                        }
+                      />
+
+                      <br />
+
+                      <button onClick={() => reviewSubmission(s.id)}>
+                        Submit Review
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
+
 
               {s.status === "approved" && (
                 <p>✅ Approved: {s.points} pts</p>
