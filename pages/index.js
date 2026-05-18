@@ -13,7 +13,6 @@ export default function ReadToLeadApp() {
   const [view, setView] = useState("student");
 
   const [title, setTitle] = useState("");
-  const [level, setLevel] = useState("");
 
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState([]);
