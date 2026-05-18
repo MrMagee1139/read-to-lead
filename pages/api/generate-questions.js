@@ -4,19 +4,12 @@ export default async function handler(req, res) {
   try {
     const { title } = req.body;
  
-    if (!title) {
-      return res.status(400).json({
-        questions: ["Please enter a book title first."],
-        difficulty: "medium"
-      });
-    }
- 
     const client = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
  
-    // ✅ STEP 1: GET DIFFICULTY FIRST
-    const difficultyResponse = await client.chat.completions.create({
+    // ✅ STEP 1: GET DIFFICULTY
+    const diffRes = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
@@ -25,30 +18,38 @@ export default async function handler(req, res) {
         },
         {
           role: "user",
-          content: `Classify this book for KS2:
+          content: `Classify this book:
 "${title}"
  
-Respond with ONE word only:
+Respond with ONE word:
 easy OR medium OR hard`
         }
       ]
     });
  
-    let difficulty = difficultyResponse.choices?.[0]?.message?.content
-      ?.toLowerCase()
-      .trim();
+    let difficulty = diffRes.choices?.[0]?.message?.content.toLowerCase().trim();
  
     if (!["easy", "medium", "hard"].includes(difficulty)) {
       difficulty = "medium";
     }
  
-    // ✅ STEP 2: SET NUMBER OF QUESTIONS
-    const numQuestions =
-      difficulty === "easy" ? 3 :
-      difficulty === "medium" ? 5 : 7;
+    // ✅ STEP 2: SET QUESTION COUNT + STYLE
+    let numQuestions = 3;
+    let instruction = "";
+ 
+    if (difficulty === "easy") {
+      numQuestions = 3;
+      instruction = "Use simple WHAT questions. Keep sentences short.";
+    } else if (difficulty === "medium") {
+      numQuestions = 5;
+      instruction = "Use a mix of WHAT and WHY questions. Include some explanation.";
+    } else {
+      numQuestions = 7;
+      instruction = "Use deeper questions including WHY, HOW, and inference. Encourage reasoning.";
+    }
  
     // ✅ STEP 3: GENERATE QUESTIONS
-    const questionResponse = await client.chat.completions.create({
+    const qRes = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
@@ -57,25 +58,21 @@ easy OR medium OR hard`
         },
         {
           role: "user",
-          content: `Create exactly ${numQuestions} comprehension questions about the book "${title}".
+          content: `Create exactly ${numQuestions} comprehension questions about "${title}".
  
 Rules:
-- Do NOT include any introduction
-- Do NOT number the questions
-- Each question must be on a new line
-- Keep language simple for KS2 students
-- Include a mix of WHAT, WHY, and deeper thinking questions
- 
-Output ONLY the questions.`
+- Do NOT number them
+- One per line
+- ${instruction}`
         }
       ]
     });
  
-    const text = questionResponse.choices?.[0]?.message?.content || "";
+    const text = qRes.choices?.[0]?.message?.content || "";
  
     const questions = text
       .split("\n")
-      .map(q => q.replace(/^\d+[.)\s]*/, "").trim())
+      .map(q => q.trim())
       .filter(q => q !== "")
       .slice(0, numQuestions);
  
@@ -84,8 +81,8 @@ Output ONLY the questions.`
       difficulty
     });
  
-  } catch (error) {
-    console.error("AI ERROR:", error);
+  } catch (err) {
+    console.error(err);
  
     res.status(200).json({
       questions: ["Error generating questions"],
