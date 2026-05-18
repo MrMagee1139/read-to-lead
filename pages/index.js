@@ -11,15 +11,14 @@ export default function ReadToLeadApp() {
   const [view, setView] = useState("student");
 
   const [title, setTitle] = useState("");
+  const [bookLevel, setBookLevel] = useState(null);
 
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState([]);
   const [aiFeedback, setAiFeedback] = useState([]);
 
   const [submissions, setSubmissions] = useState([]);
-  const [bookLevel, setBookLevel] = useState(null);
-  
-  // ✅ NEW STATES
+
   const [selectedStatus, setSelectedStatus] = useState({});
   const [teacherFeedback, setTeacherFeedback] = useState({});
 
@@ -38,11 +37,11 @@ export default function ReadToLeadApp() {
 
   const fetchSubmissions = async () => {
     const { data, error } = await supabase.from("submissions").select("*");
-
     if (error) console.error(error);
     else setSubmissions(data || []);
   };
 
+  // ✅ CHECK BOOK LEVEL (mock or AI)
   const getBookLevel = async () => {
     const res = await fetch("/api/get-book-level", {
       method: "POST",
@@ -60,7 +59,9 @@ export default function ReadToLeadApp() {
   const generateQuestions = async () => {
     const res = await fetch("/api/generate-questions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({ title })
     });
 
@@ -72,11 +73,13 @@ export default function ReadToLeadApp() {
     setAiFeedback(new Array(qs.length).fill(""));
   };
 
-  // ✅ MARK ANSWER
+  // ✅ MARK ANSWERS
   const markAnswer = async (question, answer, index) => {
     const res = await fetch("/api/mark-answer", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({ question, answer })
     });
 
@@ -86,7 +89,7 @@ export default function ReadToLeadApp() {
     setAiFeedback(newFeedback);
   };
 
-  // ✅ SAVE SUBMISSION
+  // ✅ SUBMIT BOOK
   const addBook = async () => {
     const { error } = await supabase.from("submissions").insert([
       {
@@ -108,31 +111,34 @@ export default function ReadToLeadApp() {
     }
   };
 
-  // ✅ TEACHER REVIEW
+  // ✅ TEACHER REVIEW WITH CORRECT SCORING
   const reviewSubmission = async (id) => {
     const status = selectedStatus[id];
     const feedback = teacherFeedback[id];
-    const difficulty = {
-      easy: 1,
-      medium: 1.5,
-      hard: 2
-    }[submissions.find(s => s.id === id)?.difficulty] || 1;
-
-    const quality = {
-      mastery: 2,
-      secure: 1.5,
-      emerging: 1
-    }[status] || 0;
-
-    let points = 0;
 
     if (!feedback || feedback.trim() === "") {
       alert("Feedback required");
       return;
     }
 
+    const submission = submissions.find((item) => item.id === id);
+
+    const difficultyMultiplier = {
+      easy: 1,
+      medium: 1.5,
+      hard: 2
+    }[submission?.difficulty || "medium"];
+
+    const qualityMultiplier = {
+      mastery: 2,
+      secure: 1.5,
+      emerging: 1
+    }[status] || 1;
+
+    let points = 0;
+
     if (status !== "rejected") {
-      points = Math.round(5 * difficulty * quality);
+      points = Math.round(5 * difficultyMultiplier * qualityMultiplier);
     }
 
     const { error } = await supabase
@@ -147,7 +153,7 @@ export default function ReadToLeadApp() {
 
     if (error) alert(error.message);
     else {
-      alert("✅ Review saved!");
+      alert(`✅ Saved! (${points} pts)`);
       fetchSubmissions();
     }
   };
@@ -184,10 +190,6 @@ export default function ReadToLeadApp() {
     (s) => s.student === user.name
   );
 
-  const myPoints = mySubmissions
-    .filter((s) => s.status === "approved")
-    .reduce((sum, s) => sum + (s.points || 0), 0);
-
   return (
     <div style={{ padding: 20, maxWidth: 700, margin: "auto" }}>
       <h1>📚 Read to Lead</h1>
@@ -195,7 +197,6 @@ export default function ReadToLeadApp() {
 
       <button onClick={() => setView("student")}>Student</button>
       <button onClick={() => setView("teacher")}>Teacher</button>
-      <button onClick={() => setView("leaderboard")}>Leaderboard</button>
 
       {/* STUDENT */}
       {view === "student" && user.role === "student" && (
@@ -205,6 +206,12 @@ export default function ReadToLeadApp() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
+
+          <button onClick={getBookLevel}>Check Level</button>
+
+          {bookLevel && (
+            <p>📊 Difficulty: {bookLevel.difficulty}</p>
+          )}
 
           <button onClick={generateQuestions}>Generate Questions</button>
 
@@ -230,46 +237,19 @@ export default function ReadToLeadApp() {
           ))}
 
           <button onClick={addBook}>Submit</button>
-
-          <h2>My Reading</h2>
-
-          {mySubmissions.map((s) => (
-            <div key={s.id}>
-              <strong>{s.title}</strong>
-
-              {s.status === "approved" && (
-                <>
-                  <p>✅ {s.teacher_level} ({s.points})</p>
-                  <p>{s.teacher_feedback}</p>
-                </>
-              )}
-
-              {s.status === "rejected" && (
-                <>
-                  <p>❌ Needs improvement</p>
-                  <p>{s.teacher_feedback}</p>
-                </>
-              )}
-
-              {s.status === "pending" && <p>⏳ Pending</p>}
-            </div>
-          ))}
-
-          <h3>Total: {myPoints}</h3>
         </div>
       )}
 
       {/* TEACHER */}
       {view === "teacher" && user.role === "teacher" && (
         <div>
-          <h2>Teacher Dashboard ({pendingCount})</h2>
-          <p>📊 Difficulty: {s.difficulty}</p>
-        
-          <h3>🟡 Needs Review</h3>
+          <h2>{pendingCount} to Review</h2>
+
+          <h3>🟡 Pending</h3>
 
           {pendingSubmissions.map((s) => (
             <div key={s.id} style={{ background: "#fff3cd", margin: 10 }}>
-              <p>{s.student} - {s.title}</p>
+              <p>{s.student} - {s.title} (📊 {s.difficulty})</p>
 
               {Array.isArray(s.questions) &&
                 s.questions.map((q, i) => (
@@ -310,7 +290,7 @@ export default function ReadToLeadApp() {
                     }
                   />
                   <button onClick={() => reviewSubmission(s.id)}>
-                    Submit
+                    Submit Review
                   </button>
                 </>
               )}
@@ -320,10 +300,11 @@ export default function ReadToLeadApp() {
           <h3>✅ Reviewed</h3>
 
           {reviewedSubmissions.map((s) => (
-            <div key={s.id}>
+            <div key={s.id} style={{ margin: 10 }}>
               <p>{s.student} - {s.title}</p>
               <p>{s.teacher_level}</p>
               <p>{s.teacher_feedback}</p>
+              <p>⭐ {s.points}</p>
             </div>
           ))}
         </div>
@@ -331,3 +312,4 @@ export default function ReadToLeadApp() {
     </div>
   );
 }
+``
