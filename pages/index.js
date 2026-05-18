@@ -117,6 +117,18 @@ export default function ReadToLeadApp() {
   const reviewSubmission = async (id) => {
     const status = selectedStatus[id];
     const feedback = teacherFeedback[id];
+    
+    if (status === "rejected") {
+      nextTarget = "Improve your answers by adding more detail and explanation.";
+    } else if (status === "emerging") {
+      nextTarget = "Focus on explaining your thinking clearly.";
+    } else if (status === "secure") {
+      nextTarget = submission?.difficulty === "easy"
+        ? "Try a more challenging book next time."
+        : "Keep developing your explanations.";
+    } else if (status === "mastery") {
+      nextTarget = "Excellent work! Try a more challenging book.";
+    }
 
     if (!feedback || feedback.trim() === "") {
       alert("Feedback required");
@@ -149,6 +161,7 @@ export default function ReadToLeadApp() {
         status: status === "rejected" ? "rejected" : "approved",
         teacher_level: status,
         teacher_feedback: feedback,
+        next_target: nextTarget,
         points
       })
       .eq("id", id);
@@ -285,6 +298,17 @@ const mySubmissions = user
                 <>
                   <p>✅ {s.teacher_level} ({s.points} pts)</p>
                   <p>💬 {s.teacher_feedback}</p>
+                  
+                  {s.next_target && (
+                    <p style={{
+                      background: "#e6ffe6",
+                      padding: "6px",
+                      marginTop: "5px"
+                    }}>
+                      🎯 {s.next_target}
+                    </p>
+                  )}
+
                 </>
               )}
 
