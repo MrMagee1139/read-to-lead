@@ -80,7 +80,7 @@ export default function ReadToLeadApp() {
     setAiFeedback(newFeedback);
   };
   
-  if (difficult === "hard") {
+  if (difficulty === "hard") {
       const tooShort = answers.some(a => (a || "").length < 40);
 
       if (tooShort) {
