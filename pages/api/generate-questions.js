@@ -7,6 +7,7 @@ const supabase = createClient(
 );
  
 export default function ReadToLeadApp() {
+ 
   const [user, setUser] = useState(null);
   const [view, setView] = useState("student");
  
@@ -22,12 +23,16 @@ export default function ReadToLeadApp() {
   const [selectedStatus, setSelectedStatus] = useState({});
   const [teacherFeedback, setTeacherFeedback] = useState({});
  
-  // ✅ LOGIN
+  // ✅ LOGIN (READY FOR MS365)
   const login = (name) => {
     const role = name.toLowerCase().includes("teacher")
       ? "teacher"
       : "student";
-    setUser({ name, role });
+ 
+    // ✅ Temporary placeholder (will come from MS365 tomorrow)
+    const yearGroup = "Y5";
+ 
+    setUser({ name, role, yearGroup });
   };
  
   // ✅ LOAD DATA
@@ -41,18 +46,20 @@ export default function ReadToLeadApp() {
     else setSubmissions(data || []);
   };
  
-  // ✅ GENERATE QUESTIONS
+  // ✅ GENERATE QUESTIONS (NOW SENDS YEAR GROUP)
   const generateQuestions = async () => {
     const res = await fetch("/api/generate-questions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ title })
+      body: JSON.stringify({
+        title,
+        yearGroup: user?.yearGroup || "Y5"
+      })
     });
  
     const data = await res.json();
-    console.log("API response:", data);
  
     const qs = data.questions || [];
     const diff = data.difficulty || "medium";
@@ -68,7 +75,9 @@ export default function ReadToLeadApp() {
   const markAnswer = async (question, answer, index) => {
     const res = await fetch("/api/mark-answer", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({ question, answer })
     });
  
@@ -85,7 +94,7 @@ export default function ReadToLeadApp() {
     if (difficulty === "hard") {
       const tooShort = answers.some(a => (a || "").length < 40);
       if (tooShort) {
-        alert("For harder books, please give longer answers.");
+        alert("Please give longer answers for harder books.");
         return;
       }
     }
@@ -93,6 +102,7 @@ export default function ReadToLeadApp() {
     const { error } = await supabase.from("submissions").insert([
       {
         student: user.name,
+        year_group: user.yearGroup, // ✅ READY FOR DATA
         title,
         difficulty,
         questions,
@@ -110,7 +120,7 @@ export default function ReadToLeadApp() {
     }
   };
  
-  // ✅ REVIEW (FINAL FIXED)
+  // ✅ REVIEW + NEXT TARGET
   const reviewSubmission = async (id) => {
     const status = selectedStatus[id];
     const feedback = teacherFeedback[id];
@@ -149,6 +159,7 @@ export default function ReadToLeadApp() {
     }[status] || 1;
  
     let points = 0;
+ 
     if (status !== "rejected") {
       points = Math.round(5 * difficultyMultiplier * qualityMultiplier);
     }
@@ -171,7 +182,7 @@ export default function ReadToLeadApp() {
     }
   };
  
-  // ✅ DATA PREP
+  // ✅ DATA
   const safeSubmissions = Array.isArray(submissions) ? submissions : [];
  
   const mySubmissions = user
@@ -194,17 +205,17 @@ export default function ReadToLeadApp() {
     .map(([name, pts]) => ({ name, pts }))
     .sort((a, b) => b.pts - a.pts);
  
-  // ✅ PROGRESS VIEW
+  // ✅ PROGRESS TRACKING
   const myProgress = mySubmissions
     .filter(s => s.status === "approved")
-    .map((s) => ({
+    .map(s => ({
       title: s.title,
       difficulty: s.difficulty,
       level: s.teacher_level,
       points: s.points
     }));
  
-  // ✅ LOGIN
+  // ✅ LOGIN SCREEN
   if (!user) {
     return (
       <div style={{ padding: 20 }}>
@@ -231,6 +242,7 @@ export default function ReadToLeadApp() {
       {/* STUDENT */}
       {view === "student" && user.role === "student" && (
         <div>
+ 
           <input
             placeholder="Book title"
             value={title}
@@ -266,6 +278,7 @@ export default function ReadToLeadApp() {
  
           <button onClick={addBook}>Submit</button>
  
+          {/* ✅ SUBMISSIONS */}
           <h2>📖 My Submissions</h2>
  
           {mySubmissions.map((s) => (
@@ -289,6 +302,7 @@ export default function ReadToLeadApp() {
             </div>
           ))}
  
+          {/* ✅ PROGRESS */}
           <h2>📈 My Progress</h2>
  
           {myProgress.map((p, i) => (
@@ -296,6 +310,7 @@ export default function ReadToLeadApp() {
               {p.title} → {p.difficulty} → {p.level} → ⭐ {p.points}
             </div>
           ))}
+ 
         </div>
       )}
  
@@ -306,7 +321,7 @@ export default function ReadToLeadApp() {
  
           {pendingSubmissions.map((s) => (
             <div key={s.id} style={{ background: "#fff3cd", margin: 10 }}>
-              <p>{s.student} - {s.title}</p>
+              <p>{s.student} - {s.title} ({s.year_group})</p>
  
               {s.questions.map((q, i) => (
                 <div key={i}>
@@ -354,6 +369,19 @@ export default function ReadToLeadApp() {
           ))}
         </div>
       )}
+ 
+      {/* LEADERBOARD */}
+      {view === "leaderboard" && (
+        <div>
+          <h2>🏆 Leaderboard</h2>
+          {leaderboard.map((s, i) => (
+            <p key={i}>
+              {i + 1}. {s.name} – {s.pts} pts
+            </p>
+          ))}
+        </div>
+      )}
+ 
     </div>
   );
 }
