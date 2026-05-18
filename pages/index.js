@@ -150,34 +150,34 @@ export default function ReadToLeadApp() {
   };
 
   // ✅ SAFE DATA
-  const safeSubmissions = Array.isArray(submissions) ? submissions : [];
+const safeSubmissions = Array.isArray(submissions) ? submissions : [];
 
-  const pendingSubmissions = safeSubmissions.filter(
-    (s) => s.status === "pending"
-  );
+const pendingSubmissions = safeSubmissions.filter(
+  (s) => s.status === "pending"
+);
 
-  const reviewedSubmissions = safeSubmissions.filter(
-    (s) => s.status !== "pending"
-  );
+const reviewedSubmissions = safeSubmissions.filter(
+  (s) => s.status !== "pending"
+);
 
-  // ✅ LEADERBOARD
-  const scores = {};
-  safeSubmissions.forEach((s) => {
-    if (s.status === "approved") {
-      scores[s.student] = (scores[s.student] || 0) + s.points;
-    }
-  });
+// ✅ LEADERBOARD
+const scores = {};
+safeSubmissions.forEach((s) => {
+  if (s.status === "approved") {
+    scores[s.student] = (scores[s.student] || 0) + s.points;
+  }
+});
 
-  const leaderboard = Object.entries(scores)
-    .map(([name, pts]) => ({ name, pts }))
-    .sort((a, b) => b.pts - a.pts);
+const leaderboard = Object.entries(scores)
+  .map(([name, pts]) => ({ name, pts }))
+  .sort((a, b) => b.pts - a.pts);
 
-  const pendingCount = pendingSubmissions.length;
+const pendingCount = pendingSubmissions.length;
 
-  
-  const mySubmissions = safeSubmissions.filter(
-    (s) => s.student === user.name
-  );
+// ✅ FIXED: SAFE USER CHECK
+const mySubmissions = user
+  ? safeSubmissions.filter((s) => s.student === user.name)
+  : [];
 
   // ✅ LOGIN SCREEN
   if (!user) {
