@@ -18,6 +18,10 @@ export default function ReadToLeadApp() {
   const [answers, setAnswers] = useState([]);
   const [aiFeedback, setAiFeedback] = useState([]);
 
+  
+  const [selectedStatus, setSelectedStatus] = useState({});
+  const [teacherFeedback, setTeacherFeedback] = useState({});
+
   const [submissions, setSubmissions] = useState([]);
 
   // ✅ LOGIN
@@ -91,7 +95,6 @@ export default function ReadToLeadApp() {
         {
           student: user.name,
           title,
-          level,
           questions,
           answers,
           ai_feedback: aiFeedback,
@@ -106,6 +109,44 @@ export default function ReadToLeadApp() {
       alert(error.message);
     } else {
       alert("✅ Submitted!");
+    }
+  };
+
+  // ✅ TEACHER REVIEW
+  const reviewSubmission = async (id) => {
+    const status = selectedStatus[id];
+    const feedback = teacherFeedback[id];
+
+    if (!feedback || feedback.trim() === "") {
+      alert("Feedback is required");
+      return;
+    }
+
+    let points = 0;
+
+    if (status !== "rejected") {
+      const multiplier =
+        status === "mastery" ? 2 :
+        status === "secure" ? 1.5 : 1;
+
+      points = Math.round(5 * multiplier);
+    }
+
+    const { error } = await supabase
+      .from("submissions")
+      .update({
+        status: status === "rejected" ? "rejected" : "approved",
+        teacher_level: status,
+        teacher_feedback: feedback,
+        points
+      })
+      .eq("id", id);
+
+    if (error) {
+      alert(error.message);
+    } else {
+      alert("✅ Review saved!");
+      fetchSubmissions();
     }
   };
 
@@ -257,7 +298,7 @@ export default function ReadToLeadApp() {
         )}
 
         {s.status === "pending" && <p>⏳ Pending</p>}
-        ``
+        
       </div>
     ))}
 
