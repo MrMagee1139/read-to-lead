@@ -317,106 +317,98 @@ export default function ReadToLeadApp() {
 )}
       {/* TEACHER VIEW */}
       {view === "teacher" && user.role === "teacher" && (
+  <div>
+    <h2>Teacher Dashboard ({pendingCount} to review)</h2>
+
+    {/* ✅ PENDING */}
+    <h3>🟡 Needs Review</h3>
+
+    {pendingSubmissions.length === 0 && <p>All caught up! 🎉</p>}
+
+    {pendingSubmissions.map((s) => (
+      <div key={s.id} style={{
+        border: "1px solid black",
+        margin: 10,
+        padding: 10,
+        backgroundColor: "#fff3cd"
+      }}>
+        <p><strong>{s.student}</strong> - {s.title}</p>
+
+        {s.questions?.map((q, i) => (
+          <div key={i}>
+            <p>{q}</p>
+            <p><strong>Answer:</strong> {s.answers[i]}</p>
+            <p>{s.ai_feedback[i]}</p>
+          </div>
+        ))}
+
         <div>
-          <h2>Teacher Dashboard ({pendingCount} to review)</h2>
+          <button onClick={() =>
+            setSelectedStatus({ ...selectedStatus, [s.id]: "emerging" })
+          }>Emerging</button>
 
-          
-          {/* ✅ PENDING WORK */}
-          <h3>🟡 Needs Review</h3>
-  
-          {pendingSubmissions.map((s) => (
-            <div key={s.id} style={{
-              border: "1px solid black",
-              margin: 10,
-              backgroundColor: "#fff3cd", // light yellow
-              padding: 10
-            }}>
-              <p><strong>{s.student}</strong> - {s.title}</p>
+          <button onClick={() =>
+            setSelectedStatus({ ...selectedStatus, [s.id]: "secure" })
+          }>Secure</button>
 
-              {s.questions?.map((q, i) => (
-                <div key={i}>
-                  <p>{q}</p>
-                  <p><strong>Answer:</strong> {s.answers[i]}</p>
-                  <p>{s.ai_feedback[i]}</p>
-                </div>
-              ))}
+          <button onClick={() =>
+            setSelectedStatus({ ...selectedStatus, [s.id]: "mastery" })
+          }>Mastery</button>
 
-              {/* ✅ REVIEW BUTTONS */}
-                <div>
-                  <button onClick={() =>
-                    setSelectedStatus({ ...selectedStatus, [s.id]: "emerging" })
-                  }>
-                    Emerging
-                  </button>
-
-                  <button onClick={() =>
-                    setSelectedStatus({ ...selectedStatus, [s.id]: "secure" })
-                  }>
-                    Secure
-                  </button>
-
-                  <button onClick={() =>
-                    setSelectedStatus({ ...selectedStatus, [s.id]: "mastery" })
-                  }>
-                    Mastery
-                  </button>
-
-                  <button
-                    style={{ backgroundColor: "red", color: "white" }}
-                    onClick={() =>
-                      setSelectedStatus({ ...selectedStatus, [s.id]: "rejected" })
-                    }
-                  >
-                    Reject
-                  </button>
-
-                  {/* ✅ FEEDBACK BOX APPEARS AFTER SELECT */}
-                  {selectedStatus[s.id] && (
-                    <div style={{ marginTop: 10 }}>
-                      <textarea
-                        placeholder="Write feedback for student..."
-                        value={teacherFeedback[s.id] || ""}
-                        onChange={(e) =>
-                          setTeacherFeedback({
-                            ...teacherFeedback,
-                            [s.id]: e.target.value
-                          })
-                        }
-                      />
-                      <br />
-                      <button onClick={() => reviewSubmission(s.id)}>
-                        Submit Review
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {/* ✅ REVIEWED WORK */}
-              <h3>✅ Reviewed</h3>
-
-              {reviewedSubmissions.map((s) => (
-                <div key={s.id} style={{
-                  border: "1px solid #ccc",
-                  margin: 10,
-                  padding: 10,
-                  opacity: 0.85
-                }}>
-                  <p><strong>{s.student}</strong> - {s.title}</p>
-
-                  {s.status === "approved" && (
-                    <p>✅ {s.teacher_level} ({s.points} pts)</p>
-                  )}
-
-                  {s.status === "rejected" && (
-                    <p>❌ Rejected</p>
-                  )}
-
-                  <p>💬 {s.teacher_feedback}</p>
-              </div>
-            ))}
+          <button
+            style={{ background: "red", color: "white" }}
+            onClick={() =>
+              setSelectedStatus({ ...selectedStatus, [s.id]: "rejected" })
+            }
+          >
+            Reject
+          </button>
         </div>
-      )}
+
+        {selectedStatus[s.id] && (
+          <div style={{ marginTop: 10 }}>
+            <textarea
+              value={teacherFeedback[s.id] || ""}
+              onChange={(e) =>
+                setTeacherFeedback({
+                  ...teacherFeedback,
+                  [s.id]: e.target.value
+                })
+              }
+            />
+            <br />
+            <button onClick={() => reviewSubmission(s.id)}>
+              Submit Review
+            </button>
+          </div>
+        )}
+      </div>
+    ))}
+
+    {/* ✅ REVIEWED */}
+    <h3>✅ Reviewed</h3>
+
+    {reviewedSubmissions.map((s) => (
+      <div key={s.id} style={{
+        border: "1px solid #ccc",
+        margin: 10,
+        padding: 10
+      }}>
+        <p><strong>{s.student}</strong> - {s.title}</p>
+
+        {s.status === "approved" && (
+          <p>✅ {s.teacher_level} ({s.points} pts)</p>
+        )}
+
+        {s.status === "rejected" && (
+          <p>❌ Rejected</p>
+        )}
+
+        <p>💬 {s.teacher_feedback}</p>
+      </div>
+    ))}
+  </div>
+)}
 
       {/* LEADERBOARD */}
       {view === "leaderboard" && (
