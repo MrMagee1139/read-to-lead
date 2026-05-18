@@ -241,10 +241,17 @@ export default function ReadToLeadApp() {
               <p>📊 {s.difficulty}</p>
 
               {Array.isArray(s.questions) &&
-                s.questions.map((q, i) => (
-                  <div key={i}>
-                    <p>{q}</p>
+                s.questions.map((q, i) => (                 
+                  <div key={i} style={{ marginBottom: 10 }}>
+                    <p><strong>Question:</strong> {q}</p>
+                                
+                    <p><strong>Student Answer:</strong></p>
                     <p>{s.answers?.[i]}</p>
+
+                    <p><strong>AI Feedback:</strong></p>
+                    <p style={{ background: "#e6f7ff", padding: 5, borderLeft: "4px solid blue" }}>
+                      {s.ai_feedback?.[i]}
+                    </p>
                   </div>
                 ))}
 
