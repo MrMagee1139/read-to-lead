@@ -204,28 +204,45 @@ const mySubmissions = user
   : [];
 
   // ✅ LOGIN SCREEN
-  if (!user) {
-    return (
-      <div style={{ padding: 20 }}>
-        <h2>Login</h2>
+  
+if (!user) {
+  return (
+    <div style={styles.loginPage}>
+      <div style={styles.loginBox}>
+        
+        <h1 style={styles.logo}>📚 Read to Lead</h1>
+        <p style={{ marginBottom: "20px" }}>
+          Enter your name (add "teacher" if staff)
+        </p>
+
         <input
-          placeholder="Enter name (add 'teacher')"
+          style={styles.input}
+          placeholder="Your name"
           onKeyDown={(e) => {
             if (e.key === "Enter") login(e.target.value);
           }}
         />
+
       </div>
-    );
-  }
+    </div>
+  );
+}
 
-  return (
-    <div style={{ padding: 20 }}>
-      <h1>📚 Read to Lead</h1>
-      <h3>{user.name} ({user.role})</h3>
+  
+return (
+  <div style={styles.appPage}>
 
-      <button onClick={() => setView("student")}>Student</button>
-      <button onClick={() => setView("teacher")}>Teacher</button>
-      <button onClick={() => setView("leaderboard")}>Leaderboard</button>
+    {/* HEADER */}
+    <div style={styles.header}>
+      📚 Read to Lead
+    </div>
+
+    <div style={styles.container}>
+
+
+      <button style={styles.navButton} onClick={() => setView("student")}>Student</button>
+      <button style={styles.navButton} onClick={() => setView("teacher")}>Teacher</button>
+      <button style={styles.navButton} onClick={() => setView("leaderboard")}>Leaderboard</button>
 
       {/* STUDENT */}
       {view === "student" && user.role === "student" && (
@@ -417,3 +434,69 @@ const mySubmissions = user
     </div>
   );
 }
+
+
+const styles = {
+
+  loginPage: {
+    backgroundColor: "#002147",
+    height: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  loginBox: {
+    background: "white",
+    padding: "40px",
+    borderRadius: "12px",
+    width: "90%",
+    maxWidth: "350px",
+    textAlign: "center",
+  },
+
+  logo: {
+    fontSize: "28px",
+    fontWeight: "bold",
+    color: "#002147",
+  },
+
+  header: {
+    backgroundColor: "#002147",
+    color: "white",
+    padding: "15px",
+    textAlign: "center",
+    fontSize: "22px",
+    fontWeight: "bold",
+  },
+
+  appPage: {
+    backgroundColor: "#f4f6f8",
+    minHeight: "100vh",
+  },
+
+  container: {
+    maxWidth: "900px",
+    margin: "20px auto",
+    padding: "20px",
+  },
+
+  navButton: {
+    margin: "5px",
+    padding: "10px 15px",
+    backgroundColor: "#002147",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+  },
+
+  input: {
+    width: "100%",
+    padding: "10px",
+    borderRadius: "6px",
+    border: "1px solid #ccc",
+  }
+
+};
+
