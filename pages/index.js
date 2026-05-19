@@ -261,7 +261,7 @@ export default function ReadToLeadApp() {
           </p>
 
         </div>
-      ))}
+      )}
 
       {/* ✅ MARKING BUTTONS */}
       <button onClick={() =>
