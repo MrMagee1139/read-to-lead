@@ -299,11 +299,7 @@ return (
           {mySubmissions.map((s) => (
             <div
               key={s.id}
-              style={{
-                border: "1px solid #ccc",
-                padding: 10,
-                marginTop: 10
-              }}
+              style={styles.card}
             >
               <strong>{s.title}</strong>
 
@@ -313,7 +309,18 @@ return (
 
               {s.status === "approved" && (
                 <>
-                  <p>✅ {s.teacher_level} ({s.points} pts)</p>
+                  
+<p style={{
+  fontWeight: "bold",
+  color:
+    s.teacher_level === "mastery" ? "#2e7d32" :
+    s.teacher_level === "secure" ? "#1565c0" :
+    s.teacher_level === "emerging" ? "#f9a825" :
+    "#c62828"
+}}>
+  {s.teacher_level.toUpperCase()} ({s.points} pts)
+</p>
+
                   <p>💬 {s.teacher_feedback}</p>
                   
                   {s.next_target && (
