@@ -215,13 +215,17 @@ if (!user) {
           Enter your name (add "teacher" if staff)
         </p>
 
-        <input
-          style={styles.input}
-          placeholder="Your name"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") login(e.target.value);
-          }}
-        />
+        
+<input
+  style={styles.input}
+  placeholder="Your name"
+  type="text"
+  autoComplete="username"
+  onKeyDown={(e) => {
+    if (e.key === "Enter") login(e.target.value);
+  }}
+/>
+
 
       </div>
     </div>
