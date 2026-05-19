@@ -42,8 +42,10 @@ export default function ReadToLeadApp() {
   const generateQuestions = async () => {
     const res = await fetch("/api/generate-questions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title })
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ title, yearGroup: "Y5" })
     });
 
     const data = await res.json();
@@ -59,7 +61,9 @@ export default function ReadToLeadApp() {
   const markAnswer = async (question, answer, index) => {
     const res = await fetch("/api/mark-answer", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({ question, answer })
     });
 
@@ -98,7 +102,43 @@ export default function ReadToLeadApp() {
     }
   };
 
-  // ---------------- DATA ----------------
+  const reviewSubmission = async (id) => {
+    const status = selectedStatus[id];
+    const feedback = teacherFeedback[id];
+
+    if (!feedback) {
+      alert("Write feedback first");
+      return;
+    }
+
+    const submission = submissions.find(s => s.id === id);
+
+    let nextTarget = "";
+
+    if (status === "rejected") nextTarget = "Improve your answers with more detail.";
+    else if (status === "emerging") nextTarget = "Explain your thinking more clearly.";
+    else if (status === "secure") nextTarget = "Try a more challenging book next.";
+    else if (status === "mastery") nextTarget = "Excellent! Push harder.";
+
+    const diff = { easy: 1, medium: 1.5, hard: 2 }[submission?.difficulty];
+    const qual = { emerging: 1, secure: 1.5, mastery: 2 }[status];
+
+    const points = status === "rejected" ? 0 : Math.round(5 * diff * qual);
+
+    await supabase
+      .from("submissions")
+      .update({
+        status: status === "rejected" ? "rejected" : "approved",
+        teacher_level: status,
+        teacher_feedback: feedback,
+        next_target: nextTarget,
+        points
+      })
+      .eq("id", id);
+
+    alert("✅ Saved!");
+    fetchSubmissions();
+  };
 
   const safeSubmissions = Array.isArray(submissions) ? submissions : [];
 
@@ -121,8 +161,6 @@ export default function ReadToLeadApp() {
     ? safeSubmissions.filter((s) => s.student === user.name)
     : [];
 
-  // ---------------- LOGIN ----------------
-
   if (!user) {
     return (
       <div style={styles.loginPage}>
@@ -141,8 +179,6 @@ export default function ReadToLeadApp() {
       </div>
     );
   }
-
-  // ---------------- APP ----------------
 
   return (
     <div style={styles.appPage}>
@@ -192,119 +228,67 @@ export default function ReadToLeadApp() {
 
             <h2>📖 My Submissions</h2>
 
-            {mySubmissions.map((s) => {
-
-              const levelColor =
-                s.teacher_level === "mastery" ? "#2e7d32" :
-                s.teacher_level === "secure" ? "#1565c0" :
-                s.teacher_level === "emerging" ? "#f9a825" :
-                "#c62828";
-
-              return (
-                <div key={s.id} style={styles.card}>
-
-                  <div style={{
-                    height: "6px",
-                    backgroundColor:
-                      s.status === "pending" ? "#999" :
-                      s.status === "rejected" ? "#c62828" :
-                      levelColor
-                  }} />
-
-                  <div style={{ padding: "10px" }}>
-                    <strong>{s.title}</strong>
-
-                    {s.status === "pending" && (
-                      <p>⏳ Waiting for teacher review</p>
-                    )}
-
-                    {s.status === "approved" && (
-                      <>
-                        <p style={{ color: levelColor, fontWeight: "bold" }}>
-                          {s.teacher_level.toUpperCase()} ({s.points} pts)
-                        </p>
-                        <p>💬 {s.teacher_feedback}</p>
-                      </>
-                    )}
-                  </div>
-
-                </div>
-              );
-            })}
+            {mySubmissions.map((s) => (
+              <div key={s.id} style={styles.card}>
+                <strong>{s.title}</strong>
+                <p>{s.teacher_feedback}</p>
+                <p>{s.next_target}</p>
+              </div>
+            ))}
 
           </div>
         )}
 
-        {/* TEACHER (UNCHANGED) */}
+        {/* TEACHER */}
         {view === "teacher" && user.role === "teacher" && (
-          
-<div>
-  <h2>{pending.length} to review</h2>
+          <div>
+            <h2>{pendingSubmissions.length} to review</h2>
 
-  {pending.map((s) => (
-    <div key={s.id} style={{ marginBottom: "20px", padding: "10px", border: "1px solid #ccc" }}>
+            {pendingSubmissions.map((s) => (
+              <div key={s.id} style={styles.card}>
 
-      <p><strong>{s.student} - {s.title}</strong></p>
+                <div style={{ padding: "10px" }}>
 
-      <p>📊 Difficulty: {s.difficulty}</p>
+                  <p><strong>{s.student} - {s.title}</strong></p>
+                  <p>📊 {s.difficulty}</p>
 
-      {/* ✅ QUESTIONS + ANSWERS */}
-      {Array.isArray(s.questions) && s.questions.map((q, i) => (
-        <div key={i} style={{ marginBottom: "10px" }}>
+                  {Array.isArray(s.questions) && s.questions.map((q, i) => (
+                    <div key={i}>
+                      <p>{q}</p>
+                      <p>{s.answers?.[i]}</p>
+                      <p>{s.ai_feedback?.[i]}</p>
+                    </div>
+                  ))}
 
-          <p><strong>Question:</strong> {q}</p>
+                  <button onClick={() => setSelectedStatus({ ...selectedStatus, [s.id]: "emerging" })}>Emerging</button>
+                  <button onClick={() => setSelectedStatus({ ...selectedStatus, [s.id]: "secure" })}>Secure</button>
+                  <button onClick={() => setSelectedStatus({ ...selectedStatus, [s.id]: "mastery" })}>Mastery</button>
+                  <button onClick={() => setSelectedStatus({ ...selectedStatus, [s.id]: "rejected" })}>Reject</button>
 
-          <p><strong>Answer:</strong> {s.answers?.[i]}</p>
+                  {selectedStatus[s.id] && (
+                    <>
+                      <textarea
+                        style={{ width: "100%" }}
+                        value={teacherFeedback[s.id] || ""}
+                        onChange={(e) =>
+                          setTeacherFeedback({
+                            ...teacherFeedback,
+                            [s.id]: e.target.value
+                          })
+                        }
+                      />
+                      <button onClick={() => reviewSubmission(s.id)}>
+                        Submit Review
+                      </button>
+                    </>
+                  )}
 
-          <p style={{ background: "#e6f7ff", padding: "5px" }}>
-            <strong>AI Feedback:</strong> {s.ai_feedback?.[i]}
-          </p>
+                </div>
 
-        </div>
-      )}
-
-      {/* ✅ MARKING BUTTONS */}
-      <button onClick={() =>
-        setSelectedStatus({ ...selectedStatus, [s.id]: "emerging" })
-      }>Emerging</button>
-
-      <button onClick={() =>
-        setSelectedStatus({ ...selectedStatus, [s.id]: "secure" })
-      }>Secure</button>
-
-      <button onClick={() =>
-        setSelectedStatus({ ...selectedStatus, [s.id]: "mastery" })
-      }>Mastery</button>
-
-      <button onClick={() =>
-        setSelectedStatus({ ...selectedStatus, [s.id]: "rejected" })
-      }>Reject</button>
-
-      {/* ✅ FEEDBACK BOX */}
-      {selectedStatus[s.id] && (
-        <>
-          <textarea
-            style={{ width: "100%", marginTop: "10px" }}
-            placeholder="Write feedback..."
-            value={teacherFeedback[s.id] || ""}
-            onChange={(e) =>
-              setTeacherFeedback({
-                ...teacherFeedback,
-                [s.id]: e.target.value
-              })
-            }
-          />
-
-          <button onClick={() => reviewSubmission(s.id)}>
-            ✅ Submit Review
-          </button>
-        </>
-      )}
-
-    </div>
-  ))}
-</div>
-
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* LEADERBOARD */}
         {view === "leaderboard" && (
@@ -321,8 +305,6 @@ export default function ReadToLeadApp() {
   );
 }
 
-// ---------------- STYLES ----------------
-
 const styles = {
   loginPage: {
     backgroundColor: "#002147",
@@ -331,7 +313,6 @@ const styles = {
     justifyContent: "center",
     alignItems: "center"
   },
-
   loginBox: {
     background: "white",
     padding: "40px",
@@ -339,25 +320,21 @@ const styles = {
     width: "300px",
     textAlign: "center"
   },
-
   header: {
     backgroundColor: "#002147",
     color: "white",
     padding: "15px",
     textAlign: "center"
   },
-
   appPage: {
     backgroundColor: "#f4f6f8",
     minHeight: "100vh"
   },
-
   container: {
     maxWidth: "900px",
     margin: "20px auto",
     padding: "20px"
   },
-
   navButton: {
     margin: "5px",
     padding: "10px",
@@ -366,23 +343,15 @@ const styles = {
     border: "none",
     borderRadius: "6px"
   },
-
-  input: {
-    padding: "10px",
-    width: "100%"
-  },
-
   textarea: {
     width: "100%",
-    height: "120px",
-    marginTop: "5px"
+    height: "120px"
   },
-
   card: {
     background: "white",
     borderRadius: "12px",
     marginTop: "20px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-    overflow: "hidden"
+    padding: "10px",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
   }
 };
