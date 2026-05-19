@@ -237,16 +237,74 @@ export default function ReadToLeadApp() {
 
         {/* TEACHER (UNCHANGED) */}
         {view === "teacher" && user.role === "teacher" && (
-          <div>
-            <h2>{pendingSubmissions.length} to Review</h2>
+          
+<div>
+  <h2>{pending.length} to review</h2>
 
-            {pendingSubmissions.map((s) => (
-              <div key={s.id} style={{ background: "#fff3cd", margin: 10 }}>
-                <p>{s.student} - {s.title}</p>
-              </div>
-            ))}
-          </div>
-        )}
+  {pending.map((s) => (
+    <div key={s.id} style={{ marginBottom: "20px", padding: "10px", border: "1px solid #ccc" }}>
+
+      <p><strong>{s.student} - {s.title}</strong></p>
+
+      <p>📊 Difficulty: {s.difficulty}</p>
+
+      {/* ✅ QUESTIONS + ANSWERS */}
+      {Array.isArray(s.questions) && s.questions.map((q, i) => (
+        <div key={i} style={{ marginBottom: "10px" }}>
+
+          <p><strong>Question:</strong> {q}</p>
+
+          <p><strong>Answer:</strong> {s.answers?.[i]}</p>
+
+          <p style={{ background: "#e6f7ff", padding: "5px" }}>
+            <strong>AI Feedback:</strong> {s.ai_feedback?.[i]}
+          </p>
+
+        </div>
+      ))}
+
+      {/* ✅ MARKING BUTTONS */}
+      <button onClick={() =>
+        setSelectedStatus({ ...selectedStatus, [s.id]: "emerging" })
+      }>Emerging</button>
+
+      <button onClick={() =>
+        setSelectedStatus({ ...selectedStatus, [s.id]: "secure" })
+      }>Secure</button>
+
+      <button onClick={() =>
+        setSelectedStatus({ ...selectedStatus, [s.id]: "mastery" })
+      }>Mastery</button>
+
+      <button onClick={() =>
+        setSelectedStatus({ ...selectedStatus, [s.id]: "rejected" })
+      }>Reject</button>
+
+      {/* ✅ FEEDBACK BOX */}
+      {selectedStatus[s.id] && (
+        <>
+          <textarea
+            style={{ width: "100%", marginTop: "10px" }}
+            placeholder="Write feedback..."
+            value={teacherFeedback[s.id] || ""}
+            onChange={(e) =>
+              setTeacherFeedback({
+                ...teacherFeedback,
+                [s.id]: e.target.value
+              })
+            }
+          />
+
+          <button onClick={() => reviewSubmission(s.id)}>
+            ✅ Submit Review
+          </button>
+        </>
+      )}
+
+    </div>
+  ))}
+</div>
+
 
         {/* LEADERBOARD */}
         {view === "leaderboard" && (
