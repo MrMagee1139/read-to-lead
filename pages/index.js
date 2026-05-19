@@ -98,11 +98,30 @@ export default function ReadToLeadApp() {
     }
   };
 
+  // ---------------- DATA ----------------
+
   const safeSubmissions = Array.isArray(submissions) ? submissions : [];
+
+  const pendingSubmissions = safeSubmissions.filter(
+    (s) => s.status === "pending"
+  );
+
+  const scores = {};
+  safeSubmissions.forEach((s) => {
+    if (s.status === "approved") {
+      scores[s.student] = (scores[s.student] || 0) + s.points;
+    }
+  });
+
+  const leaderboard = Object.entries(scores)
+    .map(([name, pts]) => ({ name, pts }))
+    .sort((a, b) => b.pts - a.pts);
 
   const mySubmissions = user
     ? safeSubmissions.filter((s) => s.student === user.name)
     : [];
+
+  // ---------------- LOGIN ----------------
 
   if (!user) {
     return (
@@ -123,100 +142,128 @@ export default function ReadToLeadApp() {
     );
   }
 
+  // ---------------- APP ----------------
+
   return (
     <div style={styles.appPage}>
       <div style={styles.header}>📚 Read to Lead</div>
 
       <div style={styles.container}>
-        <button style={styles.navButton} onClick={() => setView("student")}>
-          Student
-        </button>
 
-        <input
-          placeholder="Book title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+        <button style={styles.navButton} onClick={() => setView("student")}>Student</button>
+        <button style={styles.navButton} onClick={() => setView("teacher")}>Teacher</button>
+        <button style={styles.navButton} onClick={() => setView("leaderboard")}>Leaderboard</button>
 
-        <button onClick={generateQuestions}>Generate Questions</button>
-        <button onClick={addBook}>Submit</button>
+        {/* STUDENT */}
+        {view === "student" && user.role === "student" && (
+          <div>
 
-        <h2>📖 My Submissions</h2>
+            <input
+              placeholder="Book title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
 
-        {mySubmissions.map((s) => {
-          const levelColor =
-            s.teacher_level === "mastery" ? "#2e7d32" :
-            s.teacher_level === "secure" ? "#1565c0" :
-            s.teacher_level === "emerging" ? "#f9a825" :
-            "#c62828";
+            <button onClick={generateQuestions}>Generate Questions</button>
 
-          return (
-            <div key={s.id} style={styles.card}>
+            {questions.map((q, i) => (
+              <div key={i}>
+                <p>{q}</p>
 
-              {/* ✅ COLOURED STRIP */}
-              <div style={{
-                height: "6px",
-                backgroundColor:
-                  s.status === "pending" ? "#999" :
-                  s.status === "rejected" ? "#c62828" :
-                  levelColor
-              }} />
+                <textarea
+                  style={styles.textarea}
+                  value={answers[i] || ""}
+                  onChange={(e) => {
+                    const a = [...answers];
+                    a[i] = e.target.value;
+                    setAnswers(a);
+                  }}
+                />
 
-              <div style={{ padding: "12px" }}>
+                <button onClick={() => markAnswer(q, answers[i], i)}>
+                  Check
+                </button>
 
-                <strong>{s.title}</strong>
-
-                {s.status === "pending" && (
-                  <p>⏳ Waiting for teacher review</p>
-                )}
-
-                {s.status === "approved" && (
-                  <>
-                    <p style={{
-                      color: levelColor,
-                      fontWeight: "bold"
-                    }}>
-                      {s.teacher_level.toUpperCase()} ({s.points} pts)
-                    </p>
-
-                    <p>💬 {s.teacher_feedback}</p>
-
-                    {s.next_target && (
-                      <p style={styles.targetBox}>
-                        🎯 {s.next_target}
-                      </p>
-                    )}
-                  </>
-                )}
-
-                {s.status === "rejected" && (
-                  <>
-                    <p style={{ color: "#c62828", fontWeight: "bold" }}>
-                      ❌ Needs improvement
-                    </p>
-
-                    <p>💬 {s.teacher_feedback}</p>
-
-                    <button style={{ marginTop: "5px" }} onClick={() => {
-                      setTitle(s.title);
-                      setQuestions(s.questions || []);
-                      setAnswers(s.answers || []);
-                      setAiFeedback(s.ai_feedback || []);
-                    }}>
-                      ✏️ Improve and Resubmit
-                    </button>
-                  </>
-                )}
-
+                <p>{aiFeedback[i]}</p>
               </div>
+            ))}
 
-            </div>
-          );
-        })}
+            <button onClick={addBook}>Submit</button>
+
+            <h2>📖 My Submissions</h2>
+
+            {mySubmissions.map((s) => {
+
+              const levelColor =
+                s.teacher_level === "mastery" ? "#2e7d32" :
+                s.teacher_level === "secure" ? "#1565c0" :
+                s.teacher_level === "emerging" ? "#f9a825" :
+                "#c62828";
+
+              return (
+                <div key={s.id} style={styles.card}>
+
+                  <div style={{
+                    height: "6px",
+                    backgroundColor:
+                      s.status === "pending" ? "#999" :
+                      s.status === "rejected" ? "#c62828" :
+                      levelColor
+                  }} />
+
+                  <div style={{ padding: "10px" }}>
+                    <strong>{s.title}</strong>
+
+                    {s.status === "pending" && (
+                      <p>⏳ Waiting for teacher review</p>
+                    )}
+
+                    {s.status === "approved" && (
+                      <>
+                        <p style={{ color: levelColor, fontWeight: "bold" }}>
+                          {s.teacher_level.toUpperCase()} ({s.points} pts)
+                        </p>
+                        <p>💬 {s.teacher_feedback}</p>
+                      </>
+                    )}
+                  </div>
+
+                </div>
+              );
+            })}
+
+          </div>
+        )}
+
+        {/* TEACHER (UNCHANGED) */}
+        {view === "teacher" && user.role === "teacher" && (
+          <div>
+            <h2>{pendingSubmissions.length} to Review</h2>
+
+            {pendingSubmissions.map((s) => (
+              <div key={s.id} style={{ background: "#fff3cd", margin: 10 }}>
+                <p>{s.student} - {s.title}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* LEADERBOARD */}
+        {view === "leaderboard" && (
+          <div>
+            <h2>🏆 Leaderboard</h2>
+            {leaderboard.map((s, i) => (
+              <p key={i}>{i + 1}. {s.name} – {s.pts} pts</p>
+            ))}
+          </div>
+        )}
+
       </div>
     </div>
   );
 }
+
+// ---------------- STYLES ----------------
 
 const styles = {
   loginPage: {
@@ -224,58 +271,53 @@ const styles = {
     height: "100vh",
     display: "flex",
     justifyContent: "center",
-    alignItems: "center",
+    alignItems: "center"
   },
 
   loginBox: {
     background: "white",
     padding: "40px",
     borderRadius: "12px",
-    width: "90%",
-    maxWidth: "350px",
-    textAlign: "center",
-  },
-
-  logo: {
-    fontSize: "28px",
-    fontWeight: "bold",
-    color: "#002147",
+    width: "300px",
+    textAlign: "center"
   },
 
   header: {
     backgroundColor: "#002147",
     color: "white",
     padding: "15px",
-    textAlign: "center",
-    fontSize: "22px",
-    fontWeight: "bold",
+    textAlign: "center"
   },
 
   appPage: {
     backgroundColor: "#f4f6f8",
-    minHeight: "100vh",
+    minHeight: "100vh"
   },
 
   container: {
     maxWidth: "900px",
     margin: "20px auto",
-    padding: "20px",
+    padding: "20px"
   },
 
   navButton: {
     margin: "5px",
-    padding: "10px 15px",
-    backgroundColor: "#002147",
+    padding: "10px",
+    background: "#002147",
     color: "white",
     border: "none",
-    borderRadius: "6px",
+    borderRadius: "6px"
   },
 
   input: {
-    width: "100%",
     padding: "10px",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
+    width: "100%"
+  },
+
+  textarea: {
+    width: "100%",
+    height: "120px",
+    marginTop: "5px"
   },
 
   card: {
@@ -283,13 +325,6 @@ const styles = {
     borderRadius: "12px",
     marginTop: "20px",
     boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-    overflow: "hidden",
-  },
-
-  targetBox: {
-    background: "#e6ffe6",
-    padding: "8px",
-    borderRadius: "6px",
-    marginTop: "5px",
+    overflow: "hidden"
   }
 };
